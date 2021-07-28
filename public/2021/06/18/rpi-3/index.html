@@ -1,0 +1,833 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=&#34;dark&#34;>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="http://q.qlogo.cn/headimg_dl?dst_uin=2734184475&spec=640&img_type=jpg">
+  <link rel="icon" href="http://q.qlogo.cn/headimg_dl?dst_uin=2734184475&spec=640&img_type=jpg">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="description" content="树莓派折腾手册 2 ——手动搭建LNMP网站服务器环境 🙏">
+  <meta name="author" content="落落">
+  <meta name="keywords" content="技术,文案,海">
+  
+  <title>😜 树莓派折腾手册 (二)——手动搭建LNMP网站服务器环境 🙏 - 落落のBlog</title>
+
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" />
+
+
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@4.0.0/github-markdown.min.css" />
+  <link  rel="stylesheet" href="/lib/hint/hint.min.css" />
+
+  
+    
+    
+      
+      <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@10.7.2/styles/atom-one-dark.min.css" />
+    
+  
+
+  
+    <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css" />
+  
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_ba1fz6golrf.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_kmeydafke9r.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+<!-- 自定义样式保持在最底部 -->
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    var CONFIG = {"hostname":"skyxinye.xyz","root":"/","version":"1.8.11","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"right","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"copy_btn":true,"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null}},"search_path":"/local-search.xml"};
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+
+<body>
+  <header style="height: 70vh;">
+    <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand"
+       href="/">&nbsp;<strong>落落のBlog</strong>&nbsp;</a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/Sky%E5%85%89%E2%80%A2%E9%81%87/">
+                <i class="iconfont icon-telegram-fill"></i>
+                光遇
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                标签
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/links/">
+                <i class="iconfont icon-link-fill"></i>
+                友链
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" data-toggle="modal" data-target="#modalSearch">&nbsp;<i
+                class="iconfont icon-search"></i>&nbsp;</a>
+          </li>
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+    <div class="banner" id="banner" parallax=true
+         style="background: url('https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619154345.jpg') no-repeat center center;
+           background-size: cover;">
+      <div class="full-bg-img">
+        <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+          <div class="page-header text-center fade-in-up">
+            <span class="h2" id="subtitle" title="😜 树莓派折腾手册 (二)——手动搭建LNMP网站服务器环境 🙏">
+              
+            </span>
+
+            
+              <div class="mt-3">
+  
+  
+    <span class="post-meta">
+      <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+      <time datetime="2021-06-18 19:37" pubdate>
+        2021年6月18日 晚上
+      </time>
+    </span>
+  
+</div>
+
+<div class="mt-1">
+  
+    
+    <span class="post-meta mr-2">
+      <i class="iconfont icon-chart"></i>
+      2.2k 字
+    </span>
+  
+
+  
+    
+    <span class="post-meta mr-2">
+      <i class="iconfont icon-clock-fill"></i>
+      
+      
+      30
+       分钟
+    </span>
+  
+
+  
+  
+    
+      <!-- 不蒜子统计文章PV -->
+      <span id="busuanzi_container_page_pv" style="display: none">
+        <i class="iconfont icon-eye" aria-hidden="true"></i>
+        <span id="busuanzi_value_page_pv"></span> 次
+      </span>
+    
+  
+</div>
+
+            
+          </div>
+
+          
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="d-none d-lg-block col-lg-2"></div>
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div class="py-5" id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">😜 树莓派折腾手册 (二)——手动搭建LNMP网站服务器环境 🙏</h1>
+            
+              <p class="note note-info">
+                
+                  本文最后更新于：1 个月前
+                
+              </p>
+            
+            <div class="markdown-body">
+              <h1 id="😜-树莓派折腾手册-二-——手动搭建LNMP网站服务器环境-🙏"><a href="#😜-树莓派折腾手册-二-——手动搭建LNMP网站服务器环境-🙏" class="headerlink" title="😜 树莓派折腾手册 (二)——手动搭建LNMP网站服务器环境 🙏"></a>😜 树莓派折腾手册 (二)——手动搭建LNMP网站服务器环境 🙏</h1><blockquote>
+<p>前言：这个东西我折腾了很久，试过一键部署脚本: <a target="_blank" rel="noopener" href="https://lnmp.org/auto.html">https://lnmp.org/auto</a>但是我想在局域网+frp穿透的外网，访问树莓派的网站，但是只能绑定一个域名，反正用多了就出各种问题，可能我不会用 </p>
+</blockquote>
+<div class="hljs code-wrapper"><pre><code class="hljs shell">sudo apt-get update   #好习惯，安装软件前先更新源列表</code></pre></div>
+
+<h2 id="1-安装PHP7-3"><a href="#1-安装PHP7-3" class="headerlink" title="1.安装PHP7.3"></a><strong>1.安装PHP7.3</strong></h2><blockquote>
+<p><strong>这里跳了很多坑，后来查文档才发现Debian 10 buster只能安装PHP7.0以上的版本</strong> </p>
+</blockquote>
+<div class="hljs code-wrapper"><pre><code class="hljs shell">sudo apt install -y -t buster php7.3-fpm php7.3-curl php7.3-gd php7.3-intl php7.3-mbstring php7.3-mysql php7.3-imap php7.3-opcache php7.3-sqlite3 php7.3-xml php7.3-xmlrpc php7.3-zip</code></pre></div>
+
+<p>通过命令<code>php -v</code>能够看到PHP版本号7.3，说明安装完成:</p>
+<blockquote>
+<p>输出显示配置文件在/etc/php/7.3/cli/php.ini。注意，实际上配置文件有两个，另外一个在/etc/php/7.3/fpm/php.ini。通过命令行调用php时，会使用第一个配置文件；通过fpm调用php（例如nginx）会使用第二个配置文件。  </p>
+</blockquote>
+<p>php-fpm常用管理命令:</p>
+<div class="hljs code-wrapper"><pre><code class="hljs shell">开启php-fpm:
+sudo systemctl start php7.3-fpm 
+关闭php-fpm: 
+sudo systemctl stop php7.3-fpm 
+重启php-fpm: 
+sudo systemctl restart php7.3-fpm 
+编辑php-fpm配置文件:
+sudo nano /etc/php/7.3/fpm/php.ini</code></pre></div>
+
+<h2 id="2-安装nginx"><a href="#2-安装nginx" class="headerlink" title="2.安装nginx:"></a><strong>2.安装nginx:</strong></h2><div class="hljs code-wrapper"><pre><code class="hljs shell">sudo apt-get install nginx</code></pre></div>
+
+<blockquote>
+<p>安装完成后，会自动开启nginx。在浏览器输入树莓派的IP地址，可以看到“Welcome to nginx!”</p>
+</blockquote>
+<p><strong>nginx常用管理命令：</strong> </p>
+<div class="hljs code-wrapper"><pre><code class="hljs shell">启动nginx: sudo systemctl start nginx 
+关闭nginx：sudo systemctl stop nginx 
+设置nginx开机启动：sudo systemctl enable nginx 
+重启nginx：sudo systemctl restart nginx 
+<span class="hljs-meta">#</span><span class="bash">配置文件的位置：</span> 
+默认的网站根目录：/var/www/html 
+nginx配置文件目录：/etc/nginx/ 
+nginx主配置文件位置：/etc/nginx/nginx.conf</code></pre></div>
+
+<h2 id="3-配置nginx解析php-关键"><a href="#3-配置nginx解析php-关键" class="headerlink" title="3.配置nginx解析php (关键)"></a>3.配置nginx解析php (关键)</h2><ul>
+<li>编辑配置nginx文件: </li>
+</ul>
+<div class="hljs code-wrapper"><pre><code class="hljs shell">sudo nano /etc/nginx/sites-enabled/default</code></pre></div>
+
+<p>找到<code># pass PHP scripts to FastCGI server</code>后面的 <code>location</code> ，删除注释。修改后如下： </p>
+<blockquote>
+<p>PHP的默认路径转发有问题导致的,因为很多nginx的默认PHP配置文件的写法为 <strong>location ~ .php</strong> 要改成 *<em>location~.<em>.php(/.</em>)</em>$** </p>
+</blockquote>
+<div class="hljs code-wrapper"><pre><code class="hljs shell">index index.php index.html index.htm index.nginx-debian.html; 
+location ~ .*\.php(\/.*)*$ &#123; 
+include snippets/fastcgi-php.conf; 
+<span class="hljs-meta">#</span><span class="bash"> </span>
+<span class="hljs-meta">#</span><span class="bash">	<span class="hljs-comment"># With php-fpm (or other unix sockets):</span></span> 
+    fastcgi_pass unix:/run/php/php7.3-fpm.sock; 
+<span class="hljs-meta">#</span><span class="bash">	<span class="hljs-comment"># With php-cgi (or other tcp sockets):</span></span> 
+<span class="hljs-meta">#</span><span class="bash">fastcgi_pass 127.0.0.1:9000;</span> 
+&#125;</code></pre></div>
+
+<ul>
+<li>保存后重启nginx： </li>
+</ul>
+<div class="hljs code-wrapper"><pre><code class="hljs shell">sudo systemctl restart nginx</code></pre></div>
+
+<p><strong>重启无报错则修改成功啦:</strong><br><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619152804.png" srcset="/img/loading.gif" lazyload></p>
+<ul>
+<li>在网站根目录创建一个php文件： </li>
+</ul>
+<div class="hljs code-wrapper"><pre><code class="hljs shell">sudo nano /var/www/html/index.php</code></pre></div>
+
+<p>写入以下php代码并保存： </p>
+<div class="hljs code-wrapper"><pre><code class="hljs shell">&lt;?php phpinfo();</code></pre></div>
+
+<p>在浏览器中输入树莓派的IP地址即可看到phpinfo:<br><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619152811.png" srcset="/img/loading.gif" lazyload></p>
+<h2 id="4-安装mariaDB数据库"><a href="#4-安装mariaDB数据库" class="headerlink" title="4.安装mariaDB数据库"></a><strong>4.安装mariaDB数据库</strong></h2><ul>
+<li>使用以下命令安装<code>mariadb</code>: </li>
+</ul>
+<div class="hljs code-wrapper"><pre><code class="hljs shell">sudo apt-get install mariadb-server mariadb-client</code></pre></div>
+
+<ul>
+<li>执行数据库初始化安装:</li>
+</ul>
+<div class="hljs code-wrapper"><pre><code class="hljs shell">sudo mysql_secure_installation</code></pre></div>
+
+<blockquote>
+<p>根据提示设置数据库<code>root用户密码</code>、<code>是否允许外网访问</code>等，建议用<strong>翻译软件</strong>，一步步翻译。  <code>回车 n Y n Y Y</code>   </p>
+</blockquote>
+<ul>
+<li>尝试用<strong>普通用户pi</strong>登录数据库:<br><code>mysql -u root -p</code><br>输入上一步设置的密码，发现无法登录，错误提示如下:</li>
+</ul>
+<blockquote>
+<p>ERROR 1698 (28000): Access denied for user ‘root’@’localhost’</p>
+</blockquote>
+<p>原因: 数据库默认使用<strong>特权用户root登录</strong>，需要修改为<strong>普通用户使用密码登录</strong><br>-尝试用<strong>特权用户root</strong>登录数据库:</p>
+<div class="hljs code-wrapper"><pre><code class="hljs shell">sudo mysql -u root# 登入数据库后，依次执行以下SQL： use mysql;update user set plugin=&#x27;mysql_native_password&#x27;;flush privileges;exit;</code></pre></div>
+
+<p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619152818.png" srcset="/img/loading.gif" lazyload></p>
+<p>再次使用普通用户pi <code>mysql -u root -p</code> 即可通过密码登录数据库，无需root权限执行:</p>
+<p> <img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619152823.png" srcset="/img/loading.gif" lazyload></p>
+<ul>
+<li>设置<strong>数据库密码</strong><br><strong>依次执行以下SQL：</strong> </li>
+</ul>
+<div class="hljs code-wrapper"><pre><code class="hljs sql">use mysql;   UPDATE <span class="hljs-keyword">user</span> <span class="hljs-keyword">SET</span> password<span class="hljs-operator">=</span>password(<span class="hljs-string">&#x27;123456&#x27;</span>) <span class="hljs-keyword">WHERE</span> <span class="hljs-keyword">user</span><span class="hljs-operator">=</span><span class="hljs-string">&#x27;root&#x27;</span>;   flush privileges;   exit;</code></pre></div>
+
+<ul>
+<li>设置<strong>mariaDB数据库</strong> <em><strong>外部网络访问权限</strong></em></li>
+</ul>
+<blockquote>
+<p>根据官方的说法， MariaDB为了<strong>提高安全性</strong>，默认只监听127.0.0.1中的3306端口并且禁止了远程的TCP链接，我们可以通过下面两步来开启<strong>MySQL的远程服务</strong></p>
+</blockquote>
+<ol>
+<li>打开文件<code>sudo nano /etc/mysql/mariadb.conf.d/50-server.cnf</code>，注释掉bind-address项，如下:<br><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619152829.png" srcset="/img/loading.gif" lazyload></li>
+<li>开启了<strong>MySQL监听远程连接</strong>的选项，接下来需要给对应的<strong>MySQL账户分配权限</strong>，允许使用该账户<strong>远程连接</strong>到MySQL:<br>查看<strong>用户账号信息</strong>：</li>
+</ol>
+<div class="hljs code-wrapper"><pre><code class="hljs sql"><span class="hljs-keyword">select</span> <span class="hljs-keyword">User</span>,host <span class="hljs-keyword">from</span> mysql.user;</code></pre></div>
+
+<p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619152834.png" srcset="/img/loading.gif" lazyload><br><strong>root账户</strong>中的host项是<strong>localhost</strong>表示该账号只能进行<strong>本地登录</strong>，我们需要<strong>修改权限</strong>，执行MySQL命令:</p>
+<div class="hljs code-wrapper"><pre><code class="hljs sql"><span class="hljs-keyword">GRANT</span> <span class="hljs-keyword">ALL</span> PRIVILEGES <span class="hljs-keyword">ON</span> <span class="hljs-operator">*</span>.<span class="hljs-operator">*</span> <span class="hljs-keyword">TO</span> <span class="hljs-string">&#x27;root&#x27;</span>@<span class="hljs-string">&#x27;%&#x27;</span> IDENTIFIED <span class="hljs-keyword">BY</span> <span class="hljs-string">&#x27;123456&#x27;</span> <span class="hljs-keyword">WITH</span> <span class="hljs-keyword">GRANT</span> OPTION;FLUSH PRIVILEGES;exit;</code></pre></div>
+
+<p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619152851.png" srcset="/img/loading.gif" lazyload></p>
+<blockquote>
+<p>这个时候发现相比之前<strong>多了一项</strong>，它的<strong>host项是%<strong>，这个时候说明配置成功了，我们可以用该账号进行</strong>远程访问</strong>了</p>
+</blockquote>
+<ul>
+<li><strong>mariadb配置文件</strong>保存在多个位置:</li>
+</ul>
+<div class="hljs code-wrapper"><pre><code class="hljs shell">/etc/mysql/mariadb.cnf /etc/mysql/mariadb.conf.d/ /etc/mysql/conf.d/</code></pre></div>
+
+<ul>
+<li><strong>mariadb常用</strong>命令:</li>
+</ul>
+<div class="hljs code-wrapper"><pre><code class="hljs shell"><span class="hljs-meta">#</span><span class="bash">启动mariadb: sudo systemctl start mariadb <span class="hljs-comment">#关闭/开启/重启 mariadb：systemctl stop/start/restart mariadb #设置mariadb开机启动：sudo systemctl enable mariadb</span></span></code></pre></div>
+
+<ul>
+<li><strong>连接MySQL</strong>数据库命令:</li>
+</ul>
+<div class="hljs code-wrapper"><pre><code class="hljs shell">mysql -h主机地址 -u用户名 －p用户密码</code></pre></div>
+
+<blockquote>
+<p><strong>(注:u与root可以不用加空格，其它也一样)</strong></p>
+</blockquote>
+<h2 id="5-安装phpmyadmin可视化MySQL管理工具"><a href="#5-安装phpmyadmin可视化MySQL管理工具" class="headerlink" title="5.安装phpmyadmin可视化MySQL管理工具"></a>5.安装<code>phpmyadmin</code>可视化MySQL管理工具</h2><blockquote>
+<p><strong>官方网站</strong>:  <a target="_blank" rel="noopener" href="https://www.phpmyadmin.net/">phpmyadmin官网</a></p>
+<ul>
+<li>用<strong>wget</strong>下载源码包包到web目录<br>(请自行到官网获取最新下载链接)，截至2020/8/4版本为:<br><strong>phpMyAdmin-5.0.2-all-languages.zip</strong></li>
+</ul>
+</blockquote>
+<div class="hljs code-wrapper"><pre><code class="hljs shell">wget https://gproxy.cn/https://github.com/phpmyadmin/phpmyadmin/archive/RELEASE_5_0_4.zip</code></pre></div>
+
+<ul>
+<li><strong>解压zip格式</strong>源码包包到<strong>web目录</strong></li>
+</ul>
+<div class="hljs code-wrapper"><pre><code class="hljs shell">sudo chmod 777 -R /var/www/html/unzip -d /var/www/html/ ~/phpMyAdmin-5.0.2-all-languages.zip</code></pre></div>
+
+<blockquote>
+<p>若unzip不受支持请安装<br><strong>sudo apt-get install unzip</strong></p>
+</blockquote>
+<ul>
+<li><strong>重命名文件夹并修改参数</strong></li>
+</ul>
+<div class="hljs code-wrapper"><pre><code class="hljs shell">cd /var/www/html/mv phpMyAdmin-5.0.2-all-languages phpmyadmincd phpmyadminmv config.sample.inc.php config.inc.phpnano config.inc.php$cfg[&#x27;AllowArbitraryServer&#x27;] = true;</code></pre></div>
+
+<p>编辑<code>config.inc.php</code>文件，修改密钥字段:<br><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619152859.png" srcset="/img/loading.gif" lazyload></p>
+<blockquote>
+<p>修改<strong>blowfish_secret</strong>字段，后面的密钥无仅仅用于加密而已，<strong>尽量足够长</strong>。<strong>当然偷偷插入<del>喜欢的女孩子</del>名字也是可以的哦</strong></p>
+</blockquote>
+<ul>
+<li>把<strong>config.inc.php文件权限修改</strong>为744</li>
+</ul>
+<div class="hljs code-wrapper"><pre><code class="hljs shell">sudo chmod 744 config.inc.php</code></pre></div>
+
+<ul>
+<li>尝试访问 http://你的树莓派ip/phpmyadmin<br><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619152752.png" srcset="/img/loading.gif" lazyload><br><strong>启动高级功能</strong> 会新建一个phpmyadmin数据库<br><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619152912.png" srcset="/img/loading.gif" lazyload><br><strong>安装成功！</strong><br><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619152920.png" srcset="/img/loading.gif" lazyload></li>
+</ul>
+<h2 id="6-搭建多个nginx虚拟主机"><a href="#6-搭建多个nginx虚拟主机" class="headerlink" title="6.搭建多个nginx虚拟主机"></a>6.搭建多个<code>nginx</code>虚拟主机</h2><blockquote>
+<p>有时候我们要在主机的<strong>不同端口</strong>搭建不同用处的<strong>web服务</strong>，这时就需要多个新建多个nginx虚拟主机的啦~</p>
+</blockquote>
+<ul>
+<li><p>打开<code>nginx</code>主配置文件</p>
+<div class="hljs code-wrapper"><pre><code class="hljs shell">sudo nano /etc/nginx/nginx.conf</code></pre></div>
+
+<p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619152925.png" srcset="/img/loading.gif" lazyload alt="image-20200805160257592"></p>
+</li>
+</ul>
+<p>找到<code>include</code>字段就是每个<strong>虚拟主机配置文件</strong>，为了方便管理，我们在<strong>用户家目录</strong>新建一个<code>nginx-conf</code>存放我们的<strong>nginx虚拟主机文件</strong></p>
+<div class="hljs code-wrapper"><pre><code class="hljs shell"><span class="hljs-meta">#</span><span class="bash"> 在配置文件插入include /home/pi/nginx-conf/*;</span></code></pre></div>
+
+<p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619152933.png" srcset="/img/loading.gif" lazyload alt="image-20200805160615360"></p>
+<div class="hljs code-wrapper"><pre><code class="hljs shell">mkdir /home/pi/nginx-confnano /home/pi/nginx-conf/kodbox.conf</code></pre></div>
+
+<p>写入以下内容:           <em><strong>(贴出一份完整的nginx虚拟主机配置，需要自行修改两个参数)</strong></em></p>
+<div class="hljs code-wrapper"><pre><code class="hljs shell"><span class="hljs-meta">#</span><span class="bash"> 监听端口 两个都要改server &#123;	listen 88 default_server;	listen [::]:88 default_server;	<span class="hljs-comment"># SSL configuration	#	# listen 443 ssl default_server;	# listen [::]:443 ssl default_server;	#	# include snippets/snakeoil.conf;	root /home/pi/kodbox; #网站根目录位置	# Add index.php to the list if you are using PHP	index index.php index.html index.htm index.nginx-debian.html;	server_name _;	location / &#123;		try_files $uri $uri/ =404;	&#125;	# pass PHP scripts to FastCGI server	#	location ~ .*\.php(\/.*)*$ &#123;		include snippets/fastcgi-php.conf;		fastcgi_pass unix:/run/php/php7.3-fpm.sock;	&#125;&#125;</span></span></code></pre></div>
+
+<p>重启<code>nginx</code>，愿一切安好:</p>
+<div class="hljs code-wrapper"><pre><code class="hljs shell">sudo systemctl restart nginxwget --content-disposition https://packagecloud.io/headmelted/codebuilds/packages/debian/stretch/code-oss_1.45.0-1586135971_arm64.deb/download.deb</code></pre></div>
+
+<h2 id="7-树莓派PHP调优"><a href="#7-树莓派PHP调优" class="headerlink" title="7. 树莓派PHP调优"></a>7. 树莓派<code>PHP</code>调优</h2><blockquote>
+<h4 id="lnmp默认环境部署完成后，进行调优以应对多并发，复杂任务的情景"><a href="#lnmp默认环境部署完成后，进行调优以应对多并发，复杂任务的情景" class="headerlink" title="lnmp默认环境部署完成后，进行调优以应对多并发，复杂任务的情景"></a><strong>lnmp默认环境</strong>部署完成后，进行调优以应对<strong>多并发，复杂任务的情景</strong></h4></blockquote>
+<ul>
+<li><p>部署<strong>PHP探针</strong>以测试</p>
+<blockquote>
+<p>部署服务器探针推荐X探针，GitHub项目地址：</p>
+<p><a target="_blank" rel="noopener" href="https://github.com/kmvan/x-prober">GitHub X刘海探针</a></p>
+</blockquote>
+</li>
+</ul>
+<div class="hljs code-wrapper"><pre><code class="hljs shell"><span class="hljs-meta">#</span><span class="bash">克隆项目到www目录<span class="hljs-built_in">cd</span> /var/www/htmlwget https://github.com/kmvan/x-prober/raw/master/dist/prober.php<span class="hljs-comment">#删除默认页rm index.phpmv prober.php index.phpsudo chmod 777 index.php</span></span></code></pre></div>
+
+<p><strong>尝试</strong>访问 <code>http://树莓派ip</code> :</p>
+<p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619152940.png" srcset="/img/loading.gif" lazyload alt="image-20200807132503823"></p>
+<blockquote>
+<p>可以看到这些参数都是好   <strong>鸡肋的</strong></p>
+</blockquote>
+<ul>
+<li>修改<strong>php.ini</strong> 仔细看好喽~</li>
+</ul>
+<div class="hljs code-wrapper"><pre><code class="hljs shell">sudo nano /etc/php/7.3/fpm/php.ini</code></pre></div>
+
+<p>修改 <em><strong>post 方式提交的数据大小</strong></em>，查找：<code>post_max_size</code> <strong>酌情修改为2000M</strong></p>
+<p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619152945.png" srcset="/img/loading.gif" lazyload alt="image-20200807133234597"></p>
+<p>修改 <em><strong>运行超时秒数</strong></em> ，查找：<code>max_execution_time</code> <strong>酌情修改为3600s</strong></p>
+<p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619152950.png" srcset="/img/loading.gif" lazyload alt="image-20200807133453326"></p>
+<p>修改 <em><strong>上传文件限制</strong></em> ，查找：<code>upload_max_filesize</code> <strong>酌情修改为2000M</strong></p>
+<p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619152956.png" srcset="/img/loading.gif" lazyload alt="image-20200807133741086"></p>
+<p>修改 <em><strong>运行内存限制</strong></em> ，查找：<code>memory_limit</code> <strong>酌情修改为2000M</strong></p>
+<p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619153003.png" srcset="/img/loading.gif" lazyload alt="image-20200807133917750"></p>
+<p>开启 <em><strong>文件上传</strong></em>  ,查找：<code>file_uploads</code> 更改为<code>On</code></p>
+<p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619153007.png" srcset="/img/loading.gif" lazyload alt="image-20200807134107318"></p>
+<ul>
+<li><p>更改完成后重启 <code>nginx+php-fpm</code> </p>
+<div class="hljs code-wrapper"><pre><code class="hljs apache"><span class="hljs-attribute">max_input_time</span> = <span class="hljs-number">3600</span>;sudo systemctl restart nginxsudo systemctl restart php<span class="hljs-number">7</span>.<span class="hljs-number">3</span>-fpm</code></pre></div></li>
+</ul>
+<p><strong>更改后的探针页面</strong>：</p>
+<p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619153012.png" srcset="/img/loading.gif" lazyload alt="image-20200807134706542"></p>
+<h2 id="8-搭建kodbox云私有云盘"><a href="#8-搭建kodbox云私有云盘" class="headerlink" title="8.搭建kodbox云私有云盘"></a>8.搭建<code>kodbox</code>云私有云盘</h2><blockquote>
+<h1 id="下载安装"><a href="#下载安装" class="headerlink" title="下载安装"></a>下载安装</h1><h4 id="即刻下载，开启私有云盘之旅"><a href="#即刻下载，开启私有云盘之旅" class="headerlink" title="即刻下载，开启私有云盘之旅"></a>即刻下载，开启私有云盘之旅</h4><p><strong>官网:<a target="_blank" rel="noopener" href="http://kodcloud.com/download/">可道云官网</a></strong></p>
+</blockquote>
+<ul>
+<li><strong>下载源码</strong></li>
+</ul>
+<div class="hljs code-wrapper"><pre><code class="hljs shell">cd ~mkdir kodboxcd kodboxwget http://static.kodcloud.com/update/download/kodbox.1.11.zipunzip kodbox.1.11.zipunzip kodbox.1.11.ziprm kodbox.1.11.zipchmod 777 ~/kodbox</code></pre></div>
+
+<p>尝试访问 <strong>http://树莓派ip:88</strong> :</p>
+<p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619153018.png" srcset="/img/loading.gif" lazyload alt="image-20200805163537543"></p>
+<blockquote>
+<p>除了PHP版本外其他都可以通过哒~</p>
+</blockquote>
+<ul>
+<li><p>安装系统缓存<code>Redis</code></p>
+<div class="hljs code-wrapper"><pre><code class="hljs routeros">sudo apt-<span class="hljs-builtin-name">get</span> install redis php-redis</code></pre></div>
+
+<p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619153025.png" srcset="/img/loading.gif" lazyload alt="image-20200805164115135"></p>
+</li>
+</ul>
+<p><strong>redis服务会自动运行自动添加开机启动项，省心！！！</strong></p>
+<p><strong>编辑</strong><code>sudo nano /etc/php/7.3/fpm/php.ini </code>文件加入：</p>
+<p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619153032.png" srcset="/img/loading.gif" lazyload alt="image-20200807211906533"></p>
+<div class="hljs code-wrapper"><pre><code class="hljs ini"><span class="hljs-attr">extension</span>=redis.so<span class="hljs-comment">#重启php-fpmsudo systemctl restart php7.3-fpm </span></code></pre></div>
+
+<p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210619153038.png" srcset="/img/loading.gif" lazyload alt="image-20200805164305612"></p>
+<blockquote>
+<h4 id="数据库选择MySQL，填入自己的密码"><a href="#数据库选择MySQL，填入自己的密码" class="headerlink" title="数据库选择MySQL，填入自己的密码"></a>数据库选择<strong>MySQL</strong>，填入自己的密码</h4><h4 id="系统缓存类型选择Redis"><a href="#系统缓存类型选择Redis" class="headerlink" title="系统缓存类型选择Redis"></a>系统缓存类型选择Redis</h4></blockquote>
+
+            </div>
+            <hr>
+            <div>
+              <div class="post-metas mb-3">
+                
+                  <div class="post-meta mr-3">
+                    <i class="iconfont icon-category"></i>
+                    
+                      <a class="hover-with-bg" href="/categories/%E6%A0%91%E8%8E%93%E6%B4%BE/">树莓派</a>
+                    
+                  </div>
+                
+                
+                  <div class="post-meta">
+                    <i class="iconfont icon-tags"></i>
+                    
+                      <a class="hover-with-bg" href="/tags/Linux%E7%B3%BB%E7%BB%9F/">Linux系统</a>
+                    
+                      <a class="hover-with-bg" href="/tags/%E6%A0%91%E8%8E%93%E6%B4%BE/">树莓派</a>
+                    
+                  </div>
+                
+              </div>
+              
+                <p class="note note-warning">
+                  
+                    本博客所有文章除特别声明外，均采用 <a target="_blank" href="https://creativecommons.org/licenses/by-sa/4.0/deed.zh" rel="nofollow noopener noopener">CC BY-SA 4.0 协议</a> ，转载请注明出处！
+                  
+                </p>
+              
+              
+                <div class="post-prevnext">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2021/06/18/hello-world/">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">我的 Hexo 博客</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2021/06/18/rpi-1/">
+                        <span class="hidden-mobile">😃 树莓派折腾手册 (一)——准备系统 😃</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+              <!-- Comments -->
+              <article class="comments" id="comments" lazyload>
+                
+                  
+                
+                
+  <div id="waline"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#waline', function() {
+      Fluid.utils.createScript('https://cdn.jsdelivr.net/npm/@waline/client@0.16.2/dist/Waline.min.js', function() {
+        var options = Object.assign(
+          {"serverURL":"https://my-blog-db.vercel.app/","placeholder":"总得要说点什么叭...","path":"window.location.pathname","avatar":"retro","meta":["nick","mail","link"],"pageSize":10,"lang":"zh-CN","highlight":false,"avatarCDN":"","avatarForce":false,"requiredFields":[],"emojiCDN":null,"emojiMaps":null,"anonymous":null},
+          {
+            el: '#waline',
+            path: window.location.pathname
+          }
+        )
+        new Waline(options);
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+              </article>
+            
+          </article>
+        </div>
+      </div>
+    </div>
+    
+      <div class="d-none d-lg-block col-lg-2 toc-container" id="toc-ctn">
+        <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+      </div>
+    
+  </div>
+</div>
+
+<!-- Custom -->
+
+
+    
+
+    
+      <a id="scroll-top-button" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v"
+                 for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    
+  </main>
+
+  <footer class="text-center mt-5 py-3">
+  <div class="footer-content">
+     <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+  </div>
+  
+
+  
+  <!-- 备案信息 -->
+  <div class="beian">
+    <span>
+      <a href="http://beian.miit.gov.cn/" target="_blank" rel="nofollow noopener">
+        粤ICP证2734189420号
+      </a>
+    </span>
+    
+      
+        <span>
+          <a
+            href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=734189420"
+            rel="nofollow noopener"
+            class="beian-police"
+            target="_blank"
+          >
+            
+              <span style="visibility: hidden; width: 0">|</span>
+              <img src="/img/police_beian.png" srcset="/img/loading.gif" lazyload alt="police-icon"/>
+            
+            <span>粤ICP证2734189420号</span>
+          </a>
+        </span>
+      
+    
+  </div>
+
+
+  
+</footer>
+
+
+  <!-- SCRIPTS -->
+  
+  <script  src="https://cdn.jsdelivr.net/npm/nprogress@0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nprogress@0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" ></script>
+<script  src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+<!-- Plugins -->
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+  
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/tocbot@4.12.3/dist/tocbot.min.js" ></script>
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js" ></script>
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/anchor-js@4.3.1/anchor.min.js" ></script>
+
+
+
+  <script defer src="https://cdn.jsdelivr.net/npm/clipboard@2.0.8/dist/clipboard.min.js" ></script>
+
+
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+  <script defer src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" ></script>
+
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12/lib/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var title = document.getElementById('subtitle').title;
+      
+      typing(title)
+      
+    })(window, document);
+  </script>
+
+
+
+
+
+  
+
+  
+    <!-- MathJax -->
+    <script>
+      MathJax = {
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']]
+        },
+        options: {
+          renderActions: {
+            findScript: [10, doc => {
+              document.querySelectorAll('script[type^="math/tex"]').forEach(node => {
+                const display = !!node.type.match(/; *mode=display/);
+                const math = new doc.options.MathItem(node.textContent, doc.inputJax[0], display);
+                const text = document.createTextNode('');
+                node.parentNode.replaceChild(text, node);
+                math.start = { node: text, delim: '', n: 0 };
+                math.end = { node: text, delim: '', n: 0 };
+                doc.math.push(math);
+              });
+            }, '', false],
+            insertedScript: [200, () => {
+              document.querySelectorAll('mjx-container').forEach(node => {
+                let target = node.parentNode;
+                if (target.nodeName.toLowerCase() === 'li') {
+                  target.parentNode.classList.add('has-jax');
+                }
+              });
+            }, '', false]
+          }
+        }
+      };
+    </script>
+
+    <script async src="https://cdn.jsdelivr.net/npm/mathjax@3.1.4/es5/tex-svg.js" ></script>
+
+  
+
+
+
+
+
+
+
+
+
+
+
+<!-- 主题的启动项 保持在最底部 -->
+<script  src="/js/boot.js" ></script>
+
+
+</body>
+</html>
