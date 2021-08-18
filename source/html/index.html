@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>服务器运行状态检查</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<!-- 新 Bootstrap 核心 CSS 文件 -->
+		<link href="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+
+		<!-- jQuery文件。务必在bootstrap.min.js 之前引入 -->
+		<script src="https://cdn.staticfile.org/jquery/2.1.1/jquery.min.js"></script>
+
+		<!-- 最新的 Bootstrap 核心 JavaScript 文件 -->
+		<script src="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+		<!-- 引入 layui.css -->
+		<link rel="stylesheet" href="//unpkg.com/layui@2.6.8/dist/css/layui.css">
+
+		<!-- 引入 layui.js -->
+		<script src="//unpkg.com/layui@2.6.8/dist/layui.js"></script>
+
+		<meta name="referrer" content="never">
+
+
+	</head>
+	<body>
+		<div class="panel panel-primary">
+			<div class="panel-heading">
+				<h3 class="panel-title text-center" style="font-size: 30px;">服务器运行状态检测</h3>
+			</div>
+
+			<div class="panel-body" style="font-size: 20px;">
+				<div class="well well-sm" style="font-size: 15px;">
+					当前ip:<code id="ip">None</code> 物理地址:<code id="addr">None</code>
+				</div>
+				<div class="alert alert-danger alert-dismissable" style="display: none;" id="frps_die">
+					<button type="button" class="close" data-dismiss="alert" aria-hidden="true">
+						&times;
+					</button>
+					<span class="glyphicon glyphicon-warning-sign"></span> Frps服务端离线
+				</div>
+
+				<div class="alert alert-danger alert-dismissable" style="display: none;" id="frpc_die">
+					<button type="button" class="close" data-dismiss="alert" aria-hidden="true">
+						&times;
+					</button>
+					<span class="glyphicon glyphicon-warning-sign"></span> 树莓派服务器离线
+				</div>
+
+				<div class="alert alert-danger alert-dismissable" style="display: none;" id="github_die">
+					<button type="button" class="close" data-dismiss="alert" aria-hidden="true">
+						&times;
+					</button>
+					<span class="glyphicon glyphicon-warning-sign"></span> 当前网络不能访问到GitHub!
+				</div>
+
+
+				<ul class="list-group">
+					<li class="list-group-item">
+						<span class="text-primary">Frps服务端</span>
+						<span class="label label-danger" id="frps"></span>
+						<!-- layui-icon-loading-1 -->
+						<i class="layui-icon layui-icon-loading layui-anim layui-anim-rotate layui-anim-loop"
+							id="frps-loading"></i>
+					</li>
+
+					<li class="list-group-item">
+						<span class="text-primary">Frpc树莓派终端</span>
+						<span class="label label-danger" id="frpc"></span>
+						<i class="layui-icon layui-icon-loading layui-anim layui-anim-rotate layui-anim-loop"
+							id="frpc-loading"></i>
+					</li>
+
+					<li class="list-group-item">
+						<span class="text-primary">GitHub连通性</span>
+						<span class="label label-danger" id="github"></span>
+						<i class="layui-icon layui-icon-loading layui-anim layui-anim-rotate layui-anim-loop"
+							id="github-loading"></i>
+					</li>
+
+					<li class="list-group-item">
+						<span class="text-primary"><a href="https://skyxinye.xyz/">落落のBlog</a></span>
+
+						<span class="label label-danger" id="blog"></span>
+						<i class="layui-icon layui-icon-loading layui-anim layui-anim-rotate layui-anim-loop"
+							id="blog-loading"></i>
+					</li>
+
+				</ul>
+
+				<button type="button" class="btn btn-success col-lg-12" onclick="location.reload();">重新检测</button>
+			</div>
+		</div>
+
+
+	</body>
+	<script type="text/javascript">
+		function check(ty) {
+
+			switch (ty) {
+				case 'frps':
+					console.log("frps")
+					$.ajax({
+						url: "http://ts.qiny.top:7500/",
+						type: "get",
+						username: "admin",
+						password: "admin",
+						timeout: 4000,
+						success: function(result, status, xhr) {
+							$("#frps").attr("class", "label label-success").text("可用" + " " + status);
+							$("#frps-loading").attr("class", "layui-icon layui-icon-ok");
+						},
+						error: function(result, status, xhr) {
+							$("#frps").text("不可用" + " " + status);
+							$("#frps-loading").attr("class", "layui-icon layui-icon-close");
+							// $("#frps_die").attr("style","display: inline;")
+							$("#frps_die").show(1000)
+						},
+					})
+					break;
+
+				case 'frpc':
+					console.log("frpc")
+					$.ajax({
+						url: "http://ts.qiny.top:48080/",
+						type: "get",
+						timeout: 4000,
+						success: function(result, status, xhr) {
+							$("#frpc").attr("class", "label label-success").text("可用" + " " + status);
+							$("#frpc-loading").attr("class", "layui-icon layui-icon-ok");
+						},
+						error: function(result, status, xhr) {
+							$("#frpc").text("不可用" + " " + status);
+							$("#frpc-loading").attr("class", "layui-icon layui-icon-close");
+							// $("#frpc_die").attr("style","")
+							$("#frpc_die").show(500)
+						},
+					})
+					break;
+
+				case 'github':
+					console.log("github")
+					$.ajax({
+						url: "https://github.com/",
+						type: "get",
+						// timeout: 7000,
+						success: function(result, status, xhr) {
+							$("#github").attr("class", "label label-success").text("可用" + " " + status);
+							$("#github-loading").attr("class", "layui-icon layui-icon-ok");
+						},
+						error: function(result, status, xhr) {
+							$("#github").text("不可用" + " " + status);
+							$("#github-loading").attr("class", "layui-icon layui-icon-close");
+							$("#github_die").show(500)
+						},
+					})
+					break;
+
+				case 'blog':
+					console.log("bolg")
+					$.ajax({
+						url: "https://skyxinye.xyz/",
+						type: "get",
+						timeout: 7000,
+						success: function(result, status, xhr) {
+							$("#blog").attr("class", "label label-success").text("可用" + " " + status);
+							$("#blog-loading").attr("class", "layui-icon layui-icon-ok");
+						},
+						error: function(result, status, xhr) {
+							$("#blog").text("不可用" + " " + status);
+							$("#blog-loading").attr("class", "layui-icon layui-icon-close");
+						},
+					})
+					break;
+
+
+			};
+
+		};
+
+		function checkAll() {
+			check("frps");
+			check("frpc");
+			check("github");
+			check("blog");
+		};
+
+
+
+		$(document).ready(function() {
+			checkAll();
+		});
+
+		function IPCallBack(result) {
+			console.log(result);
+			layer.msg(result.ip + result.addr);
+			$("#ip").text(result.ip)
+			$("#addr").text(result.addr)
+		};
+		
+	</script>
+	<script src="http://whois.pconline.com.cn/ipJson.jsp"></script>
+
+</html>
