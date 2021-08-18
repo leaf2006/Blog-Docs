@@ -4,13 +4,810 @@
   
   
   <entry>
-    <title></title>
-    <link href="/2021/08/18/test/"/>
-    <url>/2021/08/18/test/</url>
+    <title>Python asyncio 异步协程百万并发</title>
+    <link href="/2021/08/18/Python%E5%BC%82%E6%AD%A5%E5%8D%8F%E7%A8%8B/"/>
+    <url>/2021/08/18/Python%E5%BC%82%E6%AD%A5%E5%8D%8F%E7%A8%8B/</url>
     
-    <content type="html"><![CDATA[<h1 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h1>]]></content>
+    <content type="html"><![CDATA[<h1 id="Python-asyncio-异步协程百万并发"><a href="#Python-asyncio-异步协程百万并发" class="headerlink" title="Python asyncio 异步协程百万并发"></a>Python asyncio 异步协程百万并发</h1><h2 id="协程（coroutine）"><a href="#协程（coroutine）" class="headerlink" title="协程（coroutine）"></a><strong>协程（coroutine）</strong></h2><blockquote><p>本质就是一个<strong>函数</strong></p></blockquote><h2 id="事件循环——-event-loop"><a href="#事件循环——-event-loop" class="headerlink" title="事件循环——(event_loop)"></a><strong>事件循环</strong>——(event_loop)</h2><p><strong>协程函数</strong>，不是像普通函数那样直接调用运行的，必须<strong>添加到事件循环</strong>中，然后由<strong>事件循环</strong>去运行，单独运行协程函数是不会有结果的，看一个简单的例子：</p><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-keyword">import</span> time<span class="hljs-keyword">import</span> asyncio<span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">say_after_time</span>(<span class="hljs-params">delay,what</span>):</span>        <span class="hljs-keyword">await</span> asyncio.sleep(delay)        <span class="hljs-built_in">print</span>(what) <span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">main</span>():</span>        <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;开始时间为： <span class="hljs-subst">&#123;time.time()&#125;</span>&quot;</span>)        <span class="hljs-keyword">await</span> say_after_time(<span class="hljs-number">1</span>,<span class="hljs-string">&quot;hello&quot;</span>)        <span class="hljs-keyword">await</span> say_after_time(<span class="hljs-number">2</span>,<span class="hljs-string">&quot;world&quot;</span>)        <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;结束时间为： <span class="hljs-subst">&#123;time.time()&#125;</span>&quot;</span>) loop=asyncio.get_event_loop()    <span class="hljs-comment">#创建事件循环对象</span><span class="hljs-comment"># loop=asyncio.new_event_loop()   #与上面等价，创建新的事件循环</span>loop.run_until_complete(main())  <span class="hljs-comment">#通过事件循环对象运行协程函数</span>loop.close()</code></pre></div><p>在python3.6版本中，如果我们单独像执行普通函数那样执行一个协程函数，只会返回一个coroutine对象（python3.7）如下所示：</p><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-meta">&gt;&gt;&gt; </span>main()&lt;coroutine <span class="hljs-built_in">object</span> main at <span class="hljs-number">0x1053bb7c8</span>&gt;</code></pre></div><h3 id="获取事件循环对象的几种方式"><a href="#获取事件循环对象的几种方式" class="headerlink" title="获取事件循环对象的几种方式"></a>获取事件循环对象的几种方式</h3><div class="hljs code-wrapper"><pre><code class="hljs ini"><span class="hljs-attr">loop</span> = asyncio.get_event_loop()</code></pre></div><p>它是python3.7中新添加的，<strong>获得一个事件循环</strong>，如果当前线程<strong>还没有事件循环</strong>，则<strong>创建一个新的事件循环loop；</strong></p><h3 id="通过事件循环运行协程函数的两种方式"><a href="#通过事件循环运行协程函数的两种方式" class="headerlink" title="通过事件循环运行协程函数的两种方式"></a>通过事件循环运行协程函数的两种方式</h3><ol><li><p>创建事件循环对象loop，即<code>asyncio.get_event_loop()</code>，<strong>通过事件循环运行协程函数</strong>.</p></li><li><p>直接通过<code>asyncio.run(function_name)</code>运行<strong>协程函数。</strong></p><blockquote><p><strong>但是需要注意的是，首先run函数是python3.7版本新添加的，前面的版本是没有的；</strong></p></blockquote><p> 其次，这个run函数总是<strong>会创建一个新的事件循环并在run结束之后关闭事件循环</strong>，所以，如果在<strong>同一个线程</strong>中已经有了一个事件循环，则<strong>不能再使用这个函数</strong>了，因为<strong>同一个线程不能有两个事件循环</strong>，而且这个run函数<strong>不能同时运行两次</strong>，因为他已经创建一个了。即<strong>同一个线程中是不允许有多个事件循环loop的</strong>。</p></li></ol><h2 id="Task任务"><a href="#Task任务" class="headerlink" title="Task任务"></a>Task任务</h2><h3 id="创建任务（两种方法）"><a href="#创建任务（两种方法）" class="headerlink" title="创建任务（两种方法）"></a>创建任务（两种方法）</h3><ol><li><p><code>task = asyncio.create_task(coro())</code></p><blockquote><p><strong>这是3.7版本新添加的</strong>,<strong>可以传协程函数</strong></p></blockquote></li><li><p><code>task = asyncio.ensure_future(coro())</code></p></li><li><p>也可以：</p><div class="hljs code-wrapper"><pre><code class="hljs python">loop.create_future()loop.create_task(coro)</code></pre></div></li></ol><h3 id="获取某一个任务的方法"><a href="#获取某一个任务的方法" class="headerlink" title="获取某一个任务的方法"></a>获取某一个任务的方法</h3><ol><li><p><code>task=asyncio.current_task(loop=None)</code></p><blockquote><p>返回在某一个指定的loop中，<strong>当前正在运行的任务</strong>，<strong>如果没有任务正在运行，则返回None</strong>；<br>如果loop为None，<strong>则默认为在当前的事件循环中获取</strong>.</p></blockquote></li><li><p><code>asyncio.all_tasks(loop=None)</code></p><blockquote><p>返回某一个<strong>loop中还没有结束的任务</strong></p></blockquote></li></ol><h2 id="异步函数的结果获取"><a href="#异步函数的结果获取" class="headerlink" title="异步函数的结果获取"></a>异步函数的结果获取</h2><p>对于异步编程、异步函数而言，最重要的就是<strong>异步函数调用结束之后，获取异步函数的返回值</strong>，我们可以有以下几种方式<strong>来获取函数的返回值</strong>，第一是直接通过<code>Task.result()</code>来获取；第二种是<strong>绑定一个回调函数</strong>来获取，<strong>即函数执行完毕后调用一个函数来获取异步函数的返回值。</strong></p><ol><li><p>直接通过<code>result</code>来获取.</p><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-keyword">import</span> asyncio<span class="hljs-keyword">import</span> time  <span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">hello1</span>(<span class="hljs-params">a,b</span>):</span>    <span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;Hello world 01 begin&quot;</span>)    <span class="hljs-keyword">await</span> asyncio.sleep(<span class="hljs-number">3</span>)  <span class="hljs-comment">#模拟耗时任务3秒</span>    <span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;Hello again 01 end&quot;</span>)    <span class="hljs-keyword">return</span> a+b coroutine=hello1(<span class="hljs-number">10</span>,<span class="hljs-number">5</span>)loop = asyncio.get_event_loop()                <span class="hljs-comment">#第一步：创建事件循环</span>task = asyncio.ensure_future(coroutine)         <span class="hljs-comment">#第二步:将多个协程函数包装成任务列表</span>loop.run_until_complete(task)                  <span class="hljs-comment">#第三步：通过事件循环运行</span><span class="hljs-built_in">print</span>(<span class="hljs-string">&#x27;-------------------------------------&#x27;</span>)<span class="hljs-built_in">print</span>(task.result())loop.close()  <span class="hljs-string">&#x27;&#x27;&#x27;运行结果为</span><span class="hljs-string">Hello world 01 begin</span><span class="hljs-string">Hello again 01 end</span><span class="hljs-string">-------------------------------------</span><span class="hljs-string">15</span><span class="hljs-string">&#x27;&#x27;&#x27;</span></code></pre></div></li><li><p>通过定义<strong>回调函数</strong>来获取</p> <div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-keyword">import</span> asyncio<span class="hljs-keyword">import</span> time     <span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">hello1</span>(<span class="hljs-params">a,b</span>):</span>      <span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;Hello world 01 begin&quot;</span>)      <span class="hljs-keyword">await</span> asyncio.sleep(<span class="hljs-number">3</span>)  <span class="hljs-comment">#模拟耗时任务3秒</span>      <span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;Hello again 01 end&quot;</span>)    <span class="hljs-keyword">return</span> a+b   <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">callback</span>(<span class="hljs-params">future</span>):</span>   <span class="hljs-comment">#定义的回调函数,需要传future参数</span>    <span class="hljs-built_in">print</span>(future.result()) loop = asyncio.get_event_loop()                <span class="hljs-comment">#第一步：创建事件循环</span>task=asyncio.ensure_future(hello1(<span class="hljs-number">10</span>,<span class="hljs-number">5</span>))       <span class="hljs-comment">#第二步:将多个协程函数包装成任务</span>task.add_done_callback(callback)                      <span class="hljs-comment">#并被任务绑定一个回调函数，默认传入结果参数</span> loop.run_until_complete(task)                  <span class="hljs-comment">#第三步：通过事件循环运行</span>loop.close()                                   <span class="hljs-comment">#第四步：关闭事件循环</span>  <span class="hljs-string">&#x27;&#x27;&#x27;运行结果为：</span><span class="hljs-string">Hello world 01 begin</span><span class="hljs-string">Hello again 01 end</span><span class="hljs-string">15</span><span class="hljs-string">&#x27;&#x27;&#x27;</span></code></pre></div><blockquote><p><strong>注意：</strong>所谓的<strong>回调函数</strong>，就是指协程函数coroutine<strong>执行结束时候会调用回调函数</strong>。并通过<strong>参数future获取协程执行的结果</strong>。我们创建的<strong>task和回调里的future对象</strong>，实际上是<strong>同一个对象</strong>，因为task是future的子类。</p></blockquote></li></ol><h2 id="asyncio异步编程的基本模板"><a href="#asyncio异步编程的基本模板" class="headerlink" title="asyncio异步编程的基本模板"></a>asyncio异步编程的基本模板</h2><h3 id="第一步：构造事件循环"><a href="#第一步：构造事件循环" class="headerlink" title="第一步：构造事件循环"></a><strong>第一步：构造事件循环</strong></h3><ol><li><p><code>loop = asyncio.get_running_loop()</code></p><blockquote><p>返回（获取）在当前线程中<strong>正在运行的事件循环</strong>，如果没有正在运行的事件循环，则会显示错误；它是<strong>python3.7中新添加的</strong></p></blockquote></li><li><p><code>loop = asyncio.get_event_loop() </code></p><blockquote><p><strong>获得一个事件循环</strong>，如果当前线程还没有事件循环，则<strong>创建一个新的事件循环loop</strong>；</p></blockquote></li><li><p><code>loop=asyncio.set_event_loop(thread) </code></p><blockquote><p>设置一个事件循环<strong>为当前线程的事件循环</strong>；</p></blockquote></li><li><p><code>loop=asyncio.new_event_loop()</code></p><blockquote><p><strong>创建一个新的事件循环</strong></p></blockquote></li></ol><h3 id="第二步：将一个或者是多个协程函数包装成任务Task"><a href="#第二步：将一个或者是多个协程函数包装成任务Task" class="headerlink" title="第二步：将一个或者是多个协程函数包装成任务Task"></a><strong>第二步：将一个或者是多个协程函数包装成任务Task</strong></h3><ol><li><p><code>task = asyncio.create_task(coro(参数列表))</code> </p><blockquote><p><strong>这是3.7版本新添加的</strong></p></blockquote></li><li><p><code>task = asyncio.ensure_future(coro(参数列表))</code></p></li></ol><blockquote><p>需要注意的是，在使用<code>Task.result()</code>获取<strong>协程函数结果</strong>的时候，使用<code>asyncio.create_task()</code>却会显示错，但是使用<code>asyncio.ensure_future</code>却正确</p></blockquote><h3 id="第三步：通过事件循环运行"><a href="#第三步：通过事件循环运行" class="headerlink" title="第三步：通过事件循环运行"></a><strong>第三步：通过事件循环运行</strong></h3><ol><li><p><code>loop.run_until_complete(asyncio.wait(tasks))</code></p><blockquote><p>通过<code>asyncio.wait()</code><strong>整合多个task</strong></p></blockquote></li><li><p><code>loop.run_until_complete(asyncio.gather(tasks))</code></p><blockquote><p>通过<code>asyncio.gather()</code><strong>整合多个task</strong></p></blockquote></li><li><p><code>loop.run_until_complete(task_1)  </code></p><blockquote><p><strong>单个任务则不需要整合</strong></p></blockquote></li><li><p><del>loop.run_forever()</del></p><blockquote><p><del>但是这个方法在新版本已经取消，不再推荐使用，因为使用起来不简洁</del></p></blockquote></li></ol><h4 id="使用gather和wait整合task注册多个服务"><a href="#使用gather和wait整合task注册多个服务" class="headerlink" title="使用gather和wait整合task注册多个服务"></a>使用<code>gather</code>和<code>wait</code>整合task注册多个服务</h4><ol><li><h4 id="参数形式不一样"><a href="#参数形式不一样" class="headerlink" title="参数形式不一样"></a><strong>参数形式不一样</strong></h4> <strong>gather</strong>的参数为 coroutines_or_futures,即如这种形式： <div class="hljs code-wrapper"><pre><code class="hljs python">tasks = asyncio.gather(*[task1,task2,task3])tasks = asyncio.gather(task1,task2,task3)loop.run_until_complete(tasks)</code></pre></div><strong>wait</strong>的参数为<strong>列表或者集合</strong>的形式，如下: <div class="hljs code-wrapper"><pre><code class="hljs python">tasks = asyncio.wait([task1,task2,task3])loop.run_until_complete(tasks)</code></pre></div></li><li><h4 id="返回的值不一样"><a href="#返回的值不一样" class="headerlink" title="返回的值不一样"></a><strong>返回的值不一样</strong></h4><strong>gather返回的是每一个任务运行的结果</strong>：<blockquote><h6 id="要以传入一个列表可变参数"><a href="#要以传入一个列表可变参数" class="headerlink" title="要以传入一个列表可变参数"></a>要以传入一个列表可变参数</h6></blockquote><strong>可变参数允许在调用参数的时候传入多个参数,这些参数在调用时被自动组装为一个tuple</strong><code>results = await asyncio.gather(*[tasks])</code> <code>results = await asyncio.gather(task1,task2,task3)</code> <strong>wait返回dones是已经完成的任务，pending是未完成的任务，都是集合类型</strong>：<br><code>done, pending = yield from asyncio.wait(fs)</code><blockquote><p>简单来说：<strong>async.wait会返回两个值:done和pending</strong>，done为已完成的协程Task，pending为超时未完成的协程Task，<strong>需通过future.result调用Task的result。</strong></p><p>而<code>async.gather</code>返回的是<strong>已完成Task的result</strong>。</p></blockquote></li></ol><h3 id="第四步：关闭事件循环"><a href="#第四步：关闭事件循环" class="headerlink" title="第四步：关闭事件循环"></a><strong>第四步：关闭事件循环</strong></h3><div class="hljs code-wrapper"><pre><code class="hljs python">loop.close()<span class="hljs-comment"># 以上示例都没有调用 loop.close，好像也没有什么问题。所以到底要不要调 loop.close 呢？</span></code></pre></div><h2 id="注意"><a href="#注意" class="headerlink" title="注意"></a>注意</h2><h3 id="协程阻塞问题"><a href="#协程阻塞问题" class="headerlink" title="协程阻塞问题"></a>协程阻塞问题</h3><p><strong>异步方式依然会有阻塞的</strong>，当我们定义的很多个异步方法<strong>彼此之间有一来</strong>的时候，比如，我必须要等到函数1执行完毕，<strong>函数2需要用到函数1的返回值</strong>，就会造成<strong>阻塞</strong>，这也是异步编程的难点之一，如何合理配置这些资源，尽量<strong>减少函数之间的明确依赖</strong>，这是很重要的。</p><p><strong>结论</strong>：在有<strong>很多个异步方式</strong>的时候，一定要尽量避免这种<strong>异步函数的直接调用</strong>，这和同步是没什么区别的，一定要<strong>通过事件循环loop</strong>，<strong>“让事件循环在各个异步函数之间不停游走”</strong>，这样才不会造成阻塞。</p><h2 id="代码片段"><a href="#代码片段" class="headerlink" title="代码片段"></a>代码片段</h2><h3 id="使用gather同时注册多个任务，实现并发"><a href="#使用gather同时注册多个任务，实现并发" class="headerlink" title="使用gather同时注册多个任务，实现并发"></a>使用gather同时注册多个任务，实现并发</h3><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-keyword">import</span> asyncio<span class="hljs-keyword">import</span> time<span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">hello1</span>(<span class="hljs-params">a,b</span>):</span>    <span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;Hello world 01 begin&quot;</span>)    <span class="hljs-keyword">await</span> asyncio.sleep(<span class="hljs-number">3</span>)  <span class="hljs-comment">#模拟耗时任务3秒</span>    <span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;Hello again 01 end&quot;</span>)    <span class="hljs-keyword">return</span> a+b <span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">hello2</span>(<span class="hljs-params">a,b</span>):</span>    <span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;Hello world 02 begin&quot;</span>)    <span class="hljs-keyword">await</span> asyncio.sleep(<span class="hljs-number">2</span>)   <span class="hljs-comment">#模拟耗时任务2秒</span>    <span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;Hello again 02 end&quot;</span>)    <span class="hljs-keyword">return</span> a-b <span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">hello3</span>(<span class="hljs-params">a,b</span>):</span>    <span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;Hello world 03 begin&quot;</span>)    <span class="hljs-keyword">await</span> asyncio.sleep(<span class="hljs-number">4</span>)   <span class="hljs-comment">#模拟耗时任务4秒</span>    <span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;Hello again 03 end&quot;</span>)    <span class="hljs-keyword">return</span> a*b <span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">main</span>():</span>  <span class="hljs-comment">#封装多任务的入口函数</span>    <span class="hljs-comment"># 用列表表达式创建任务</span>    tasks = [        asyncio.ensure_future(hello1(<span class="hljs-number">10</span>,<span class="hljs-number">5</span>))        <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">10</span>)    ]    results = <span class="hljs-keyword">await</span> asyncio.gather(tasks)       <span class="hljs-keyword">for</span> result <span class="hljs-keyword">in</span> results:    <span class="hljs-comment">#通过迭代获取函数的结果，每一个元素就是相对应的任务的返回值，顺序都没变</span>        <span class="hljs-built_in">print</span>(result)  loop = asyncio.get_event_loop()               loop.run_until_complete(main())loop.close()</code></pre></div><h3 id="异步-多线程"><a href="#异步-多线程" class="headerlink" title="异步+多线程"></a>异步+多线程</h3><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-keyword">import</span> asyncio <span class="hljs-keyword">import</span> asyncio,time,threading <span class="hljs-comment">#需要执行的耗时异步任务</span><span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">func</span>(<span class="hljs-params">num</span>):</span>    <span class="hljs-built_in">print</span>(<span class="hljs-string">f&#x27;准备调用func,大约耗时<span class="hljs-subst">&#123;num&#125;</span>&#x27;</span>)    <span class="hljs-keyword">await</span> asyncio.sleep(num)    <span class="hljs-built_in">print</span>(<span class="hljs-string">f&#x27;耗时<span class="hljs-subst">&#123;num&#125;</span>之后,func函数运行结束&#x27;</span>) <span class="hljs-comment">#定义一个专门创建事件循环loop的函数，在另一个线程中启动它</span><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">start_loop</span>(<span class="hljs-params">loop</span>):</span>    asyncio.set_event_loop(loop)    loop.run_forever() <span class="hljs-comment">#定义一个main函数</span><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">main</span>():</span>    coroutine1 = func(<span class="hljs-number">3</span>)    coroutine2 = func(<span class="hljs-number">2</span>)    coroutine3 = func(<span class="hljs-number">1</span>)     new_loop = asyncio.new_event_loop()                        <span class="hljs-comment">#在当前线程下创建时间循环，（未启用），在start_loop里面启动它</span>    t = threading.Thread(target=start_loop,args=(new_loop,))   <span class="hljs-comment">#通过当前线程开启新的线程去启动事件循环</span>    t.start()     asyncio.run_coroutine_threadsafe(coroutine1,new_loop)  <span class="hljs-comment">#这几个是关键，代表在新线程中事件循环不断“游走”执行</span>    asyncio.run_coroutine_threadsafe(coroutine2,new_loop)    asyncio.run_coroutine_threadsafe(coroutine3,new_loop)     <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-string">&quot;iloveu&quot;</span>:        <span class="hljs-built_in">print</span>(<span class="hljs-built_in">str</span>(i)+<span class="hljs-string">&quot;    &quot;</span>) <span class="hljs-keyword">if</span> __name__ == <span class="hljs-string">&quot;__main__&quot;</span>:    main() <span class="hljs-string">&#x27;&#x27;&#x27;运行结果为：</span><span class="hljs-string">i    准备调用func,大约耗时3</span><span class="hljs-string">l    准备调用func,大约耗时2</span><span class="hljs-string">o    准备调用func,大约耗时1</span><span class="hljs-string">v</span><span class="hljs-string">e</span><span class="hljs-string">u</span><span class="hljs-string">耗时1之后,func函数运行结束</span><span class="hljs-string">耗时2之后,func函数运行结束</span><span class="hljs-string">耗时3之后,func函数运行结束</span><span class="hljs-string">&#x27;&#x27;&#x27;</span></code></pre></div><h3 id="httpx-aiohttp-之异步请求"><a href="#httpx-aiohttp-之异步请求" class="headerlink" title="httpx aiohttp 之异步请求"></a>httpx aiohttp 之异步请求</h3><ul><li><strong>aiohttp实现</strong></li></ul><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-keyword">import</span> aiohttp<span class="hljs-keyword">import</span> asyncio <span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">main</span>():</span>    <span class="hljs-keyword">async</span> <span class="hljs-keyword">with</span> aiohttp.ClientSession() <span class="hljs-keyword">as</span> client:         <span class="hljs-keyword">async</span> <span class="hljs-keyword">with</span> client.get(<span class="hljs-string">&#x27;http://httpbin.org/get&#x27;</span>) <span class="hljs-keyword">as</span> resp:              <span class="hljs-keyword">assert</span> resp.status == <span class="hljs-number">200</span>              html= <span class="hljs-keyword">await</span> resp.text()              <span class="hljs-built_in">print</span>(html)</code></pre></div><ul><li><strong>httpx实现</strong></li></ul><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-keyword">async</span> <span class="hljs-keyword">with</span> httpx.AsyncClient() <span class="hljs-keyword">as</span> client:    resp = <span class="hljs-keyword">await</span> client.get(<span class="hljs-string">&#x27;http://httpbin.org/get&#x27;</span>)    <span class="hljs-keyword">assert</span> resp.status_code == <span class="hljs-number">200</span>    html = resp.text</code></pre></div><p>感觉总体上比较<code>aiohttp</code>写起来舒服多了<strong>，少写很多异步代码。</strong></p><blockquote><p>之前使用 aiohttp 中的 resp.status 来获取状态码的时候写了status_code，应该是使用 requests 习惯了吧，这下好了使用 httpx 不用担心这个写错的问题了。</p></blockquote>]]></content>
     
     
+    <categories>
+      
+      <category>Python</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Python</tag>
+      
+      <tag>程序</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>Python 迭代器生成器修饰器</title>
+    <link href="/2021/08/18/%E8%BF%AD%E4%BB%A3%E5%99%A8%E7%94%9F%E6%88%90%E5%99%A8%E4%BF%AE%E9%A5%B0%E5%99%A8%E7%AC%94%E8%AE%B0/"/>
+    <url>/2021/08/18/%E8%BF%AD%E4%BB%A3%E5%99%A8%E7%94%9F%E6%88%90%E5%99%A8%E4%BF%AE%E9%A5%B0%E5%99%A8%E7%AC%94%E8%AE%B0/</url>
+    
+    <content type="html"><![CDATA[<h2 id="迭代器"><a href="#迭代器" class="headerlink" title="迭代器"></a>迭代器</h2><blockquote><p><strong>迭代器</strong>指的是迭代取值的工具，迭代是一个重复的过程，并且每次重复都是基于上一次的结果而继续的，</p><p>单纯的重复并不是迭代!</p></blockquote><ol><li><p>可迭代对象</p><p>元组;列表;字典;集合;字符串等</p><p>生成器.</p></li><li><p>用 for 循环迭代</p></li><li><p>验证一个东西是否可迭代</p><blockquote><p><strong>可迭代不一定是迭代对象</strong></p><p>(列表不是可迭代对象,但是可迭代.)</p></blockquote><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-keyword">from</span> collections <span class="hljs-keyword">import</span> Iterable<span class="hljs-comment"># 判断是否是可迭代对象(迭代器)</span><span class="hljs-built_in">isinstance</span>(<span class="hljs-string">&quot;adb&quot;</span>,Iterable) <span class="hljs-comment"># instance:实例</span></code></pre></div></li><li><p>生成器可迭代,但可以迭代的不一定是生成器</p></li><li><p><code>iter()</code> 可以将列表变成可迭代对象</p></li></ol><h3 id="迭代器的作用"><a href="#迭代器的作用" class="headerlink" title="迭代器的作用"></a>迭代器的作用</h3><p>迭代器是用来<strong>迭代取值</strong>的工具，而涉及到把多个值循环取出来的类型</p><blockquote><p>有：列表、字符串、元组、字典、集合、打开文件 </p></blockquote><div class="hljs code-wrapper"><pre><code class="hljs python">l = [<span class="hljs-string">&#x27;egon&#x27;</span>, <span class="hljs-string">&#x27;liu&#x27;</span>, <span class="hljs-string">&#x27;alex&#x27;</span>]i = <span class="hljs-number">0</span><span class="hljs-keyword">while</span> i &lt; <span class="hljs-built_in">len</span>(l):    <span class="hljs-built_in">print</span>(l[i])    i += <span class="hljs-number">1</span></code></pre></div><p>上述<strong>迭代取值的方式</strong>只适用于<strong>有索引</strong>的数据类型：<strong>列表、字符串、元组.</strong><br>为了解决基于索引迭代器取值的局限性<br>python必须提供一种能够不<strong>依赖于索引的取值方式</strong>，这就是<strong>迭代器</strong>.</p><h3 id="迭代器详解"><a href="#迭代器详解" class="headerlink" title="迭代器详解"></a>迭代器详解</h3><p>但凡内置有<code>__iter__()</code>方法的对象都称之为<strong>可迭代的对象</strong>:</p><div class="hljs code-wrapper"><pre><code class="hljs python">s1=<span class="hljs-string">&#x27;&#x27;</span>s1.__iter__()l=[]l.__iter__()t=(<span class="hljs-number">1</span>,)t.__iter__()d=&#123;<span class="hljs-string">&#x27;a&#x27;</span>:<span class="hljs-number">1</span>&#125;d.__iter__()set1=&#123;<span class="hljs-number">1</span>,<span class="hljs-number">2</span>,<span class="hljs-number">3</span>&#125;set1.__iter__()<span class="hljs-keyword">with</span> <span class="hljs-built_in">open</span>(<span class="hljs-string">&#x27;a.txt&#x27;</span>,mode=<span class="hljs-string">&#x27;w&#x27;</span>) <span class="hljs-keyword">as</span> f:    f.__iter__()    <span class="hljs-keyword">pass</span></code></pre></div><p><strong>迭代器对象</strong>:</p><p>内置有<code>__next__</code>方法并且内置有<code>__iter__</code>方法的对象<br>迭代器对象<code>__next()__</code>：得到迭代器的下一个值.<br>迭代器对象<code>__iter__()</code>：得到迭代器的本身，调用和没调用相同.</p><div class="hljs code-wrapper"><pre><code class="hljs python">d=&#123;<span class="hljs-string">&#x27;a&#x27;</span>:<span class="hljs-number">1</span>,<span class="hljs-string">&#x27;b&#x27;</span>:<span class="hljs-number">2</span>,<span class="hljs-string">&#x27;c&#x27;</span>:<span class="hljs-number">3</span>&#125;d_iterator=d.__iter__()<span class="hljs-built_in">print</span>(d_iterator)<span class="hljs-comment"># &lt;dict_keyiterator object at 0x0000022FF0E13A90&gt;</span><span class="hljs-built_in">print</span>(d_iterator.__next__())<span class="hljs-comment"># a</span><span class="hljs-built_in">print</span>(d_iterator.__next__())<span class="hljs-comment"># b</span><span class="hljs-built_in">print</span>(d_iterator.__next__())<span class="hljs-comment"># c</span><span class="hljs-built_in">print</span>(d_iterator.__next__())<span class="hljs-comment"># 抛出异常StopIteration,值取完了</span>d=&#123;<span class="hljs-string">&#x27;a&#x27;</span>:<span class="hljs-number">1</span>,<span class="hljs-string">&#x27;b&#x27;</span>:<span class="hljs-number">2</span>,<span class="hljs-string">&#x27;c&#x27;</span>:<span class="hljs-number">3</span>&#125;d_iterator=d.__iter__()<span class="hljs-keyword">while</span> <span class="hljs-literal">True</span>:    <span class="hljs-keyword">try</span>:        <span class="hljs-built_in">print</span>(d_iterator.__next__())    <span class="hljs-keyword">except</span> StopIteration:        <span class="hljs-keyword">break</span><span class="hljs-comment"># 得到&quot;a&quot;,&quot;b&quot;,&quot;c&quot;</span><span class="hljs-built_in">print</span>(<span class="hljs-string">&#x27;====&gt;&gt;&gt;&gt;&gt;&gt;&#x27;</span>) <span class="hljs-comment"># 在一个迭代器取值取完后，再对其取值就会报错</span>d_iterator=d.__iter__()<span class="hljs-keyword">while</span> <span class="hljs-literal">True</span>:    <span class="hljs-keyword">try</span>:        <span class="hljs-built_in">print</span>(d_iterator.__next__())    <span class="hljs-keyword">except</span> StopIteration:        <span class="hljs-keyword">break</span><span class="hljs-comment"># 什么都得不到,因为迭代器值已取完</span>l=[<span class="hljs-number">1</span>,<span class="hljs-number">2</span>,<span class="hljs-number">3</span>,<span class="hljs-number">4</span>,<span class="hljs-number">5</span>]l_iterator=l.__iter__()<span class="hljs-keyword">while</span> <span class="hljs-literal">True</span>:    <span class="hljs-keyword">try</span>:        <span class="hljs-built_in">print</span>(l_iterator.__next__())    <span class="hljs-keyword">except</span> StopIteration:        <span class="hljs-keyword">break</span><span class="hljs-comment"># 得到1,2,3,4,5</span></code></pre></div><p>常见<strong>数据类型</strong>的分类:</p><blockquote><p>可迭代对象：<strong>字符串、列表、元组、字典、集合、文件对象</strong><br>迭代器对象：<strong>文件对象</strong></p></blockquote><div class="hljs code-wrapper"><pre><code class="hljs python">s1=<span class="hljs-string">&#x27;&#x27;</span>s1.__iter__()l=[]l.__iter__()t=(<span class="hljs-number">1</span>,)t.__iter__()d=&#123;<span class="hljs-string">&#x27;a&#x27;</span>:<span class="hljs-number">1</span>&#125;d.__iter__()set1=&#123;<span class="hljs-number">1</span>,<span class="hljs-number">2</span>,<span class="hljs-number">3</span>&#125;set1.__iter__()<span class="hljs-keyword">with</span> <span class="hljs-built_in">open</span>(<span class="hljs-string">&#x27;a.txt&#x27;</span>,mode=<span class="hljs-string">&#x27;w&#x27;</span>) <span class="hljs-keyword">as</span> f:    f.__iter__()    f.__next__()</code></pre></div><h3 id="创建一个迭代器"><a href="#创建一个迭代器" class="headerlink" title="创建一个迭代器"></a>创建一个迭代器</h3><p>把一个类作为一个迭代器使用需要在类中实现两个方法 <code>iter()</code> 与 <code>next()</code> 。</p><ol><li><p><code>iter()</code>方法返回一个特殊的迭代器对象,这个迭代器对象实现了<code>next()</code>方法并通过<code>StopIteration</code>异常标识迭代的完成。</p></li><li><p><code>next()</code>方法会返回<strong>下一个迭代器对象</strong>。</p></li><li><p><strong>StopIteration</strong></p><p><code>StopIteration</code> 异常用于标识<strong>迭代的完成</strong>，防止出现无限循环的情况，在 <strong>next</strong>() 方法中我们可以设置在完成指定循环次数后触发 <code>StopIteration</code> 异常来结束迭代。</p></li></ol><blockquote><p> 创建一个返回数字的迭代器，初始值为 1，逐步递增 1</p></blockquote><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">MyNumbers</span>:</span>  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">__iter__</span>(<span class="hljs-params">self</span>):</span>    <span class="hljs-comment"># 初始化迭代器</span>    self.a = <span class="hljs-number">1</span>    <span class="hljs-keyword">return</span> self   <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">__next__</span>(<span class="hljs-params">self</span>):</span>    <span class="hljs-comment"># 迭代器返回值</span>    <span class="hljs-keyword">if</span> self.a &lt;= <span class="hljs-number">20</span>:      x = self.a      self.a += <span class="hljs-number">1</span>      <span class="hljs-keyword">return</span> x    <span class="hljs-keyword">else</span>:      <span class="hljs-keyword">raise</span> StopIteration myclass = MyNumbers()myiter = <span class="hljs-built_in">iter</span>(myclass) <span class="hljs-keyword">for</span> x <span class="hljs-keyword">in</span> myiter:  <span class="hljs-built_in">print</span>(x)<span class="hljs-comment"># fun2:</span>myiter = <span class="hljs-built_in">iter</span>(myclass)<span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(myiter))<span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(myiter))<span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(myiter))<span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(myiter))<span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(myiter))</code></pre></div><h3 id="for-循环的工作原理"><a href="#for-循环的工作原理" class="headerlink" title="for 循环的工作原理"></a>for 循环的工作原理</h3><p>for循环可以称之为叫<strong>迭代器循环</strong></p><div class="hljs code-wrapper"><pre><code class="hljs json">d = &#123;&#x27;a&#x27;:<span class="hljs-number">1</span>,&#x27;b&#x27;:<span class="hljs-number">2</span>,&#x27;c&#x27;:<span class="hljs-number">3</span>&#125;</code></pre></div><ol><li><code>d.iter()</code> 得到一个迭代器对象</li><li><code>迭代器对象.next()</code> 拿到一个返回值，然后将该返回值赋值给k</li><li>循环往复,直到抛出<code>StopIteration</code>异常<strong>for循环会捕捉异常然后结束循环.</strong></li></ol><div class="hljs code-wrapper"><pre><code class="hljs python">d = &#123;<span class="hljs-string">&#x27;a&#x27;</span>:<span class="hljs-number">1</span>,<span class="hljs-string">&#x27;b&#x27;</span>:<span class="hljs-number">2</span>,<span class="hljs-string">&#x27;c&#x27;</span>:<span class="hljs-number">3</span>&#125;<span class="hljs-keyword">for</span> k <span class="hljs-keyword">in</span> d:<span class="hljs-comment"># d_it = d.__iter__()</span>    <span class="hljs-built_in">print</span>(k)<span class="hljs-comment"># 循环k = d_it.__next__()直到抛出异常结束循环</span><span class="hljs-keyword">with</span> <span class="hljs-built_in">open</span>(<span class="hljs-string">&#x27;a.txt&#x27;</span>,mode=<span class="hljs-string">&#x27;rt&#x27;</span>,encoding=<span class="hljs-string">&#x27;utf-8&#x27;</span>) <span class="hljs-keyword">as</span> f:    <span class="hljs-keyword">for</span> line <span class="hljs-keyword">in</span> f: <span class="hljs-comment"># f.__iter__()</span>        <span class="hljs-built_in">print</span>(line)<span class="hljs-built_in">list</span>(<span class="hljs-string">&#x27;hello&#x27;</span>) <span class="hljs-comment"># 原理同for循环</span></code></pre></div><h2 id="生成器"><a href="#生成器" class="headerlink" title="生成器"></a>生成器</h2><p>在 Python 中，使用了 <code>yield</code> 的函数被称为<strong>生成器</strong>（generator）。</p><p>跟普通函数不同的是，生成器是<strong>一个返回迭代器的函数</strong>，只能用于<strong>迭代操作</strong>，更简单点理解<strong>生成器就是一个迭代器</strong>。</p><p>在<strong>调用生成器</strong>运行的过程中，每次遇到 <code>yield</code> 时函数会<strong>暂停并保存当前所有的运行信息</strong>，<strong>返回 <code>yield</code> 的值</strong>, 并在下一次执行 <code>next()</code> 方法时<strong>从当前位置继续运行</strong>。</p><p><strong>调用一个生成器函数，返回的是一个迭代器对象。</strong></p><h3 id="生成器的使用"><a href="#生成器的使用" class="headerlink" title="生成器的使用"></a>生成器的使用</h3><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">func</span>():</span>    <span class="hljs-built_in">print</span>(<span class="hljs-string">&#x27;第一次&#x27;</span>)    <span class="hljs-keyword">yield</span> <span class="hljs-number">1</span>    <span class="hljs-built_in">print</span>(<span class="hljs-string">&#x27;第二次&#x27;</span>)    <span class="hljs-keyword">yield</span> <span class="hljs-number">2</span>    <span class="hljs-built_in">print</span>(<span class="hljs-string">&#x27;第三次&#x27;</span>)    <span class="hljs-keyword">yield</span> <span class="hljs-number">3</span>    <span class="hljs-built_in">print</span>(<span class="hljs-string">&#x27;第四次&#x27;</span>)g = func()<span class="hljs-built_in">print</span>(g)<span class="hljs-comment"># 生成器就是迭代器</span><span class="hljs-comment"># 生成器函数返回的是可迭代对象.</span>g.__iter__()<span class="hljs-comment"># g.__next__()会触发函数体代码的运行，然后遇到yield停下来，将yield后的值</span><span class="hljs-comment"># 当做本次调用的结果返回</span>g = func()<span class="hljs-comment"># 可以用iter将可迭代对象转化为迭代器.用next()方法</span><span class="hljs-built_in">print</span>(g)g.__iter__()res1 = g.__next__()<span class="hljs-comment"># 第一次</span><span class="hljs-built_in">print</span>(res1)<span class="hljs-comment"># 1</span>res2 = g.__next__()<span class="hljs-comment"># 第二次</span><span class="hljs-built_in">print</span>(res2)<span class="hljs-comment"># 2</span>res3 = g.__next__()<span class="hljs-comment"># 第三次</span><span class="hljs-built_in">print</span>(res3)<span class="hljs-comment"># 3</span>res4 = g.__next__()<span class="hljs-comment"># 第四次</span><span class="hljs-comment"># StopIteration</span></code></pre></div><p>实例:使用 <code>yield</code> 实现斐波那契数列：</p><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">fibonacci</span>(<span class="hljs-params">n</span>):</span>  <span class="hljs-comment"># 生成器函数 - 斐波那契</span>    a, b, counter = <span class="hljs-number">0</span>, <span class="hljs-number">1</span>, <span class="hljs-number">0</span>    <span class="hljs-keyword">while</span> <span class="hljs-literal">True</span>:        <span class="hljs-keyword">if</span> (counter &gt; n):            <span class="hljs-keyword">return</span>        <span class="hljs-keyword">yield</span> a        a, b = b, a + b        counter += <span class="hljs-number">1</span>f = fibonacci(<span class="hljs-number">10</span>)  <span class="hljs-comment"># f 是一个迭代器，由生成器返回生成</span><span class="hljs-keyword">while</span> <span class="hljs-literal">True</span>:    <span class="hljs-keyword">try</span>:        <span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(f), end=<span class="hljs-string">&quot; &quot;</span>)    <span class="hljs-keyword">except</span> StopIteration:        <span class="hljs-keyword">break</span></code></pre></div><h3 id="yield关键字"><a href="#yield关键字" class="headerlink" title="yield关键字"></a><code>yield</code>关键字</h3><p>yield关键字的作用是<strong>函数与调用者</strong>的通信，它不光能够将<strong>值返回给调用者</strong>，它还可以<strong>接收调用者传过来的值</strong>，那么怎么实现呢？ 调用者通过<code>send()</code>函数将值传递给<strong>generator</strong>，<strong>generator</strong>通过 <code>yield</code> 前面的变量(形如:<code>n = yield)</code>来接收</p><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-meta">&gt;&gt;&gt; </span><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">test</span>():</span>number = <span class="hljs-number">0</span><span class="hljs-keyword">while</span> <span class="hljs-literal">True</span>:n = <span class="hljs-keyword">yield</span> number<span class="hljs-built_in">print</span>(<span class="hljs-string">&#x27;我是yield关键字下面一行代码&#x27;</span>)<span class="hljs-built_in">print</span>(<span class="hljs-string">&#x27;调用者传递过来的值为:&#x27;</span>, n) <span class="hljs-meta">&gt;&gt;&gt; </span>t = test()<span class="hljs-meta">&gt;&gt;&gt; </span>t.send(<span class="hljs-literal">None</span>)  <span class="hljs-comment"># 当第一次执行生成器的时候，需要传入None</span><span class="hljs-meta">&gt;&gt;&gt; </span>t.send(<span class="hljs-number">1</span>)我是<span class="hljs-keyword">yield</span>关键字下面一行代码调用者传递过来的值为: <span class="hljs-number">1</span><span class="hljs-meta">&gt;&gt;&gt; </span>t.send(<span class="hljs-number">2</span>)我是<span class="hljs-keyword">yield</span>关键字下面一行代码调用者传递过来的值为: <span class="hljs-number">2</span>t.close() 关闭generator后再调用，会出现StopIteration异常<span class="hljs-meta">&gt;&gt;&gt; </span><span class="hljs-built_in">next</span>(t)我是<span class="hljs-keyword">yield</span>关键字下面一行代码调用者传递过来的值为: <span class="hljs-literal">None</span></code></pre></div><blockquote><p>可以发现，<code>send</code>函数和<code>next</code>函数的区别就是 <code>send</code>函数可以在执行generator的<strong>过程中</strong>，给<strong>generator</strong>发送消息。<strong>而next仅仅是接收yield右边的变量值</strong>。</p></blockquote><h3 id="send-方法用法"><a href="#send-方法用法" class="headerlink" title="send()方法用法"></a><code>send()</code><strong>方法用法</strong></h3><ol start="0"><li><p><strong>send过来的数值 = yield next出来的数值</strong></p></li><li><p>它的主要作用是，当我需要<strong>手动更改生成器里面的某一个值并且使用它</strong>，则<strong>send发送进去一个数据</strong>，然后<strong>保存到yield语句的返回值</strong>，以提供使用.</p></li><li><p><code>send()</code>的返回值就是那个<strong>本来应该被迭代出来的那个值</strong>。这样既可以<strong>保证我能够传入新的值，原来的值也不会弄丢.</strong></p></li><li><p>实例:</p><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">my_generator</span>(<span class="hljs-params">n</span>):</span>    <span class="hljs-string">&#x27;&#x27;&#x27;定义一个生成器&#x27;&#x27;&#x27;</span>    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(n):        <span class="hljs-comment"># send来的数值 = yield 数值</span>        num = <span class="hljs-keyword">yield</span> i        <span class="hljs-built_in">print</span>(<span class="hljs-string">f&#x27;传入的<span class="hljs-subst">&#123;num&#125;</span>&#x27;</span>)g = my_generator(<span class="hljs-number">5</span>)<span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(g))<span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(g))a = g.send(<span class="hljs-number">100</span>)<span class="hljs-built_in">print</span>(<span class="hljs-string">&#x27;我是&#123;0&#125;&#x27;</span>.<span class="hljs-built_in">format</span>(a))<span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(g))<span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(g))<span class="hljs-string">&#x27;&#x27;&#x27; 结果</span><span class="hljs-string">0</span><span class="hljs-string">传入的None</span><span class="hljs-string">1</span><span class="hljs-string">传入的100 </span><span class="hljs-string">我是2     </span><span class="hljs-string">传入的None</span><span class="hljs-string">3</span><span class="hljs-string">传入的None</span><span class="hljs-string">4</span><span class="hljs-string">&#x27;&#x27;&#x27;</span></code></pre></div></li></ol><h3 id="throw-方法用法"><a href="#throw-方法用法" class="headerlink" title="throw()方法用法"></a><code>throw()</code>方法用法</h3><blockquote><p>简单来说就是:<strong>向生成器扔去一个异常,使生成器停止.</strong></p></blockquote><p><code>raise exception in generator，return next yielded value or StopIteration</code>，即在<strong>生成器中抛出异常</strong>，并且这个throw函数会<strong>返回下一个要迭代的值</strong>或者是<strong>StopIteration</strong>。还是通过几个例子来看吧！</p><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">my_generator</span>():</span>    <span class="hljs-keyword">yield</span> <span class="hljs-string">&#x27;a&#x27;</span>    <span class="hljs-keyword">yield</span> <span class="hljs-string">&#x27;b&#x27;</span>    <span class="hljs-keyword">yield</span> <span class="hljs-string">&#x27;c&#x27;</span>g = my_generator()<span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(g))<span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(g))<span class="hljs-built_in">print</span>(<span class="hljs-string">&#x27;-------------------------&#x27;</span>)<span class="hljs-built_in">print</span>(g.throw(StopIteration))<span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(g))<span class="hljs-string">&#x27;&#x27;&#x27;运行结果为：</span><span class="hljs-string">a</span><span class="hljs-string">b</span><span class="hljs-string">-------------------------</span><span class="hljs-string">StopIteration</span><span class="hljs-string">&#x27;&#x27;&#x27;</span></code></pre></div><h3 id="生成器的启动与关闭close"><a href="#生成器的启动与关闭close" class="headerlink" title="生成器的启动与关闭close"></a><strong>生成器的启动与关闭close</strong></h3><ol><li><p><strong>生成器的启动</strong></p><p><strong>方法1：</strong>直接使用<code>next(g)</code>，这会<strong>直接开始迭代第一个元素</strong>（<strong>推荐使用这个启动</strong>）</p><p><strong>方法2：</strong>使用<code>g.send(None)</code>进行启动，注意<strong>第一次启动的时候只能传入<code>None</code><strong>，如果传入其他具体的指则会</strong>报错</strong>哦！</p><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">my_generator</span>():</span>    <span class="hljs-keyword">yield</span> <span class="hljs-number">1</span>    <span class="hljs-keyword">yield</span> <span class="hljs-number">2</span>    <span class="hljs-keyword">yield</span> <span class="hljs-number">3</span>    <span class="hljs-keyword">yield</span> <span class="hljs-number">4</span> g = my_generator()g.send(<span class="hljs-literal">None</span>)   <span class="hljs-comment">#第一次启动，本来第一次应该迭代的1，这里被取代了，但是send(None)会返回1</span><span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(g))<span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(g))<span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(g)) <span class="hljs-string">&#x27;&#x27;&#x27;运行结果为：</span><span class="hljs-string">2</span><span class="hljs-string">3</span><span class="hljs-string">4</span><span class="hljs-string">&#x27;&#x27;&#x27;</span></code></pre></div></li><li><p><strong>生成器的关闭</strong></p><p>如果一个生成器被<strong>中途关闭</strong>之后，在此调用<code>next()</code>方法，则会显示错误，如下：</p><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">my_generator</span>():</span>    <span class="hljs-keyword">yield</span> <span class="hljs-number">1</span>    <span class="hljs-keyword">yield</span> <span class="hljs-number">2</span>    <span class="hljs-keyword">yield</span> <span class="hljs-number">3</span>    <span class="hljs-keyword">yield</span> <span class="hljs-number">4</span> g = my_generator()<span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(g))<span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(g))g.close()<span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(g))   <span class="hljs-comment">#在此处会显示错误</span><span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(g))<span class="hljs-string">&#x27;&#x27;&#x27;运行结果为：</span><span class="hljs-string">1</span><span class="hljs-string">2</span><span class="hljs-string">显示StopIteration</span><span class="hljs-string">&#x27;&#x27;&#x27;</span></code></pre></div></li></ol><h3 id="生成器的终止迭代——StopIteration"><a href="#生成器的终止迭代——StopIteration" class="headerlink" title="生成器的终止迭代——StopIteration"></a><strong>生成器的终止迭代——<code>StopIteration</code></strong></h3><blockquote><p>前面讲的手动关闭生成器，使用<code>close()</code>方法，后面的迭代会抛出<code>StopIteration</code>异常。</p></blockquote><p>在一个生成器中，如果没有<code>return</code>，则默认执行到函数完毕时返回<code>StopIteration</code>:</p>   <div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">g1</span>():</span>    <span class="hljs-keyword">yield</span> <span class="hljs-number">1</span>g = g1()<span class="hljs-built_in">next</span>(g)    <span class="hljs-comment">#第一次调用next(g)时，会在执行完yield语句后挂起，所以此时程序并没有执行结束。</span><span class="hljs-built_in">next</span>(g)    <span class="hljs-comment">#程序试图从yield语句的下一条语句开始执行，发现已经到了结尾，所以抛出StopIteration异常。</span><span class="hljs-string">&#x27;&#x27;&#x27;运行结果为：</span><span class="hljs-string">1</span><span class="hljs-string">Traceback (most recent call last):</span><span class="hljs-string">  File &quot;&lt;stdin&gt;&quot;, line 1, in &lt;module&gt;</span><span class="hljs-string">StopIteration</span><span class="hljs-string">&#x27;&#x27;&#x27;</span></code></pre></div><p> 如果遇到<code>return</code>,如果在执行过程中return，则直接抛出 <code>StopIteration</code> 终止迭代:</p>   <div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">g2</span>():</span>    <span class="hljs-keyword">yield</span> <span class="hljs-string">&#x27;a&#x27;</span>    <span class="hljs-keyword">return</span>    <span class="hljs-keyword">yield</span> <span class="hljs-string">&#x27;b&#x27;</span>g=g2()<span class="hljs-built_in">next</span>(g)    <span class="hljs-comment">#程序停留在执行完yield &#x27;a&#x27;语句后的位置。</span><span class="hljs-built_in">next</span>(g)    <span class="hljs-comment">#程序发现下一条语句是return，所以抛出StopIteration异常，这样yield &#x27;b&#x27;语句永远也不会执行。</span><span class="hljs-string">&#x27;&#x27;&#x27;运行结果为：</span><span class="hljs-string">a</span><span class="hljs-string">b</span><span class="hljs-string">Traceback (most recent call last):</span><span class="hljs-string">  File &quot;&lt;stdin&gt;&quot;, line 1, in &lt;module&gt;</span><span class="hljs-string">StopIteration</span><span class="hljs-string">&#x27;&#x27;&#x27;</span></code></pre></div><p>如果在<code>return</code>后返回一个值，那么这个值为<code>StopIteration</code>异常的说明，不是程序的返回值。</p>   <div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">g3</span>():</span> <span class="hljs-keyword">yield</span> <span class="hljs-string">&#x27;a&#x27;</span> <span class="hljs-keyword">return</span> <span class="hljs-string">&#x27;这是错误说明&#x27;</span> <span class="hljs-keyword">yield</span> <span class="hljs-string">&#x27;b&#x27;</span>   <span class="hljs-comment">#有一些编辑器会提示错误，此处为unreachable code，即不可到达的代码</span>g=g3()<span class="hljs-built_in">next</span>(g)<span class="hljs-built_in">next</span>(g)<span class="hljs-string">&#x27;&#x27;&#x27;运行结果为：</span><span class="hljs-string">a</span><span class="hljs-string">Traceback (most recent call last):</span><span class="hljs-string"> File &quot;&lt;stdin&gt;&quot;, line 1, in &lt;module&gt;</span><span class="hljs-string">StopIteration: 这是错误说明</span><span class="hljs-string">&#x27;&#x27;&#x27;</span></code></pre></div><blockquote><p><strong>注意：</strong>生成器没有办法使用<code>return</code>来返回值。因为<code>return</code>返回的那个值是通过<strong>StopIteration的异常信息</strong>返回的，所以没办法<strong>直接获取这个return返回的值</strong>。</p></blockquote><p>当然上面所说的无法获取<strong>return返回值</strong>，我们指的是没有办法通过<code>result=g3()</code>这种形式获取<strong>return的返回值</strong>。实际上还是有手段获取这个<strong>return的值的</strong>，有两种方法：</p><ol><li><p>使用<code>yield from</code>语句</p></li><li><p>因为<code>return</code>返回的值是作为<strong>StopIteration的一个value属性存在的</strong>，StopIteration本质上是<strong>一个类</strong>，所以可以通过访问它的<strong>value属性获取这个return返回的值</strong>。使用下面的代码：</p><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">g3</span>():</span>    <span class="hljs-keyword">yield</span> <span class="hljs-string">&#x27;a&#x27;</span>    <span class="hljs-keyword">return</span> <span class="hljs-string">&#x27;这是错误说明&#x27;</span>    <span class="hljs-keyword">yield</span> <span class="hljs-string">&#x27;b&#x27;</span>g=g3() <span class="hljs-keyword">try</span>:       <span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(g))  <span class="hljs-comment">#a</span>    <span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(g))  <span class="hljs-comment">#触发异常</span><span class="hljs-keyword">except</span> StopIteration <span class="hljs-keyword">as</span> exc:    result=exc.value    <span class="hljs-built_in">print</span>(result)<span class="hljs-string">&#x27;&#x27;&#x27;运行结果为：</span><span class="hljs-string">a</span><span class="hljs-string">这是错误说明</span><span class="hljs-string">&#x27;&#x27;&#x27;</span></code></pre></div></li></ol><h3 id="yield实现协程"><a href="#yield实现协程" class="headerlink" title="yield实现协程"></a><strong><code>yield</code>实现协程</strong></h3><p>在Python中，协程通过<code>yield</code>实现。因为当<strong>一个函数中有yield存在</strong>的时候，这个函数是<strong>生成器</strong>，那么当你调用这个函数的时候，你在函数体中写的代码<strong>并没有被执行</strong>，而是<strong>只返回了一个生成器对象</strong>，这个需要特别注意。然后，你的代码将会在每次使用这个生成器的时候被执行。</p><p>前面讲过<strong>yield表达式</strong>的两个关键作用：<strong>①返回一个值、②接收调用者的参数</strong></p><p><strong>“调用者”与“被调用者”</strong>之间的通信是通过<code>send()</code>进行联系的</p><p>正是因为<code>yield</code>实现的生成器具备<strong>“中断等待的功能”</strong>，才使得yield可以实现<strong>协程</strong>。</p><ol><li><p>例子1:<strong>生产者-消费者模型</strong></p><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">consumer</span>():</span>    r = <span class="hljs-string">&#x27;&#x27;</span>    <span class="hljs-keyword">while</span> <span class="hljs-literal">True</span>:        n = <span class="hljs-keyword">yield</span> r  <span class="hljs-comment">#执行的中断点</span>        <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> n:            <span class="hljs-keyword">return</span>        <span class="hljs-built_in">print</span>(<span class="hljs-string">&#x27;[消费者] 正在消费:&#123;0&#125;&#x27;</span>.<span class="hljs-built_in">format</span>(n))        r = <span class="hljs-string">&#x27;200 人民币&#x27;</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">produce</span>(<span class="hljs-params">c</span>):</span>    c.send(<span class="hljs-literal">None</span>)  <span class="hljs-comment">#启动消费者（生成器）——实际上是函数调用，只不过生成器不是直接象函数那般调用的</span>    n = <span class="hljs-number">0</span>    <span class="hljs-keyword">while</span> n &lt; <span class="hljs-number">5</span>:        n = n + <span class="hljs-number">1</span>        <span class="hljs-built_in">print</span>(<span class="hljs-string">&#x27;[生产者] 正在生产:&#123;0&#125;&#x27;</span>.<span class="hljs-built_in">format</span>(n))        r = c.send(n) <span class="hljs-comment">#给消费者传入值——实际上也是函数调用</span>        <span class="hljs-built_in">print</span>(<span class="hljs-string">&#x27;[生产者] 消费者返回:&#123;0&#125;&#x27;</span>.<span class="hljs-built_in">format</span>(r))        <span class="hljs-built_in">print</span>(<span class="hljs-string">&#x27;-------------------------------------------------&#x27;</span>)    c.close() c = consumer()<span class="hljs-comment">#构造一个生成器</span>produce(c) <span class="hljs-string">&#x27;&#x27;&#x27;运行结果为：</span><span class="hljs-string">[生产者] 正在生产:1</span><span class="hljs-string">[消费者] 正在消费:1</span><span class="hljs-string">[生产者] 消费者返回:200 人民币</span><span class="hljs-string">-------------------------------------------------</span><span class="hljs-string">[生产者] 正在生产:2</span><span class="hljs-string">[消费者] 正在消费:2</span><span class="hljs-string">[生产者] 消费者返回:200 人民币</span><span class="hljs-string">-------------------------------------------------</span><span class="hljs-string">[生产者] 正在生产:3</span><span class="hljs-string">[消费者] 正在消费:3</span><span class="hljs-string">[生产者] 消费者返回:200 人民币</span><span class="hljs-string">-------------------------------------------------</span><span class="hljs-string">[生产者] 正在生产:4</span><span class="hljs-string">[消费者] 正在消费:4</span><span class="hljs-string">[生产者] 消费者返回:200 人民币</span><span class="hljs-string">-------------------------------------------------</span><span class="hljs-string">[生产者] 正在生产:5</span><span class="hljs-string">[消费者] 正在消费:5</span><span class="hljs-string">[生产者] 消费者返回:200 人民币</span><span class="hljs-string">-------------------------------------------------</span><span class="hljs-string">&#x27;&#x27;&#x27;</span></code></pre></div></li></ol><p>协程其实就是一个<strong>可以暂停执行</strong>的函数，并且<strong>可以恢复继续执行</strong>。那么<code>yield</code>已经可以<strong>暂停执行</strong>了，如果在暂停后有办法把一些 <code>value</code> 发回到<strong>暂停执行的函数</strong>中，那么 Python 就有了<strong>『协程』</strong>。于是有了, <strong>“把东西发送到已经暂停的生成器中”</strong> 的方法，这个方法就是<code>send()</code>。</p><h3 id="yield-from-的简单实现"><a href="#yield-from-的简单实现" class="headerlink" title="yield from 的简单实现"></a><code>yield from</code> 的简单实现</h3><p>yield是每次<strong>“惰性返回”一个值</strong>，其实从名字中就能看出，<code>yield from</code> 是<code>yield</code>的升级改进版本，如果将<strong>yield理解成“返回”</strong>，那么yield from就是<strong>“从什么（生成器）里面返回”</strong>，这就构成了<code>yield from</code>的一般语法，即:</p><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-keyword">yield</span> <span class="hljs-keyword">from</span> 生成器()</code></pre></div><p><strong>其实她等同于:</strong></p><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-keyword">for</span> item <span class="hljs-keyword">in</span> 生成器():    <span class="hljs-keyword">yield</span> item</code></pre></div><p>这样的形式。我们通过一个简单例子来看：</p><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">generator2</span>():</span>    <span class="hljs-keyword">yield</span> <span class="hljs-string">&#x27;a&#x27;</span>    <span class="hljs-keyword">yield</span> <span class="hljs-string">&#x27;b&#x27;</span>    <span class="hljs-keyword">yield</span> <span class="hljs-string">&#x27;c&#x27;</span>    <span class="hljs-keyword">yield</span> <span class="hljs-keyword">from</span> generator1() <span class="hljs-comment">#yield from iterable本质上等于 for item in iterable: yield item的缩写版</span>    <span class="hljs-keyword">yield</span> <span class="hljs-keyword">from</span> [<span class="hljs-number">11</span>,<span class="hljs-number">22</span>,<span class="hljs-number">33</span>,<span class="hljs-number">44</span>]    <span class="hljs-keyword">yield</span> <span class="hljs-keyword">from</span> (<span class="hljs-number">12</span>,<span class="hljs-number">23</span>,<span class="hljs-number">34</span>)    <span class="hljs-keyword">yield</span> <span class="hljs-keyword">from</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">3</span>)    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> generator2():    <span class="hljs-built_in">print</span>(i,end=<span class="hljs-string">&#x27; , &#x27;</span>)<span class="hljs-string">&#x27;&#x27;&#x27;运行的结果为：</span><span class="hljs-string">a , b , c , 0 , 1 , 2 , 3 , 4 , 5 , 6 , 7 , 8 , 9 , 11 , 22 , 33 , 44 , 12 , 23 , 34 , 0 , 1 , 2 ,</span><span class="hljs-string">&#x27;&#x27;&#x27;</span></code></pre></div><p><code>yield from</code> 后面可以跟的可以是  <strong>“ 生成器 、元组、 列表、range()函数产生的序列等可迭代对象”</strong></p><p>简单地说,<code>yield from  generator</code> 。实际上就是返回<strong>另外一个生成器</strong>。而<code>yield</code>只是返回<strong>一个元素</strong>。从这个层面来说，有下面的等价关系：<strong>yield from iterable本质上等于 for item in iterable: yield item 。</strong></p><h3 id="yield-from的高级应用"><a href="#yield-from的高级应用" class="headerlink" title="yield from的高级应用"></a><code>yield from</code>的高级应用</h3><h4 id="1-针对yield无法获取生成器return的返回值"><a href="#1-针对yield无法获取生成器return的返回值" class="headerlink" title="1. 针对yield无法获取生成器return的返回值"></a><strong>1. 针对yield无法获取生成器return的返回值</strong></h4><blockquote><p>在使用<strong>yield生成器</strong>的时候，如果使用<strong>for语句去迭代生成器</strong>，则不会显式的发出<strong>StopIteration异常</strong>，而是<strong>自动捕获StopIteration异常</strong>，所以如果<strong>遇到return，只是会终止迭代，而不会触发异常</strong>，故而也就<strong>没办法获取return的值</strong>。如下：</p></blockquote><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">my_generator</span>():</span>    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">5</span>):        <span class="hljs-keyword">if</span> i==<span class="hljs-number">2</span>:            <span class="hljs-keyword">return</span> <span class="hljs-string">&#x27;我被迫中断了&#x27;</span>        <span class="hljs-keyword">else</span>:            <span class="hljs-keyword">yield</span> i <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">main</span>(<span class="hljs-params">generator</span>):</span>    <span class="hljs-keyword">try</span>:        <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> generator:  <span class="hljs-comment">#不会显式触发异常，故而无法获取到return的值</span>            <span class="hljs-built_in">print</span>(i)    <span class="hljs-keyword">except</span> StopIteration <span class="hljs-keyword">as</span> exc:        <span class="hljs-built_in">print</span>(exc.value) g = my_generator()  <span class="hljs-comment">#调用</span>main(g)<span class="hljs-string">&#x27;&#x27;&#x27;运行结果为：</span><span class="hljs-string">0</span><span class="hljs-string">1</span><span class="hljs-string">&#x27;&#x27;&#x27;</span></code></pre></div><p><strong>for迭代语句不会显式触发异常</strong>，故而无法获取到<strong>return的值</strong>，迭代到2的时候<strong>遇到return语句</strong>，<strong>隐式的触发了StopIteration异常</strong>，就<strong>终止迭代</strong>了，但是在程序中<strong>不会显示出来</strong>。</p><p>如果是使用<code>next()</code><strong>一次一次迭代</strong>，则会<strong>显式触发异常</strong>，但要获取return的返回值，我需要如下操作：</p><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">my_generator</span>():</span>    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">5</span>):        <span class="hljs-keyword">if</span> i==<span class="hljs-number">2</span>:            <span class="hljs-keyword">return</span> <span class="hljs-string">&#x27;我被迫中断了&#x27;</span>        <span class="hljs-keyword">else</span>:            <span class="hljs-keyword">yield</span> i <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">main</span>(<span class="hljs-params">generator</span>):</span>    <span class="hljs-keyword">try</span>:        <span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(generator))   <span class="hljs-comment">#每次迭代一个值，则会显式出发StopIteration</span>        <span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(generator))        <span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(generator))        <span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(generator))        <span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(generator))    <span class="hljs-keyword">except</span> StopIteration <span class="hljs-keyword">as</span> exc:        <span class="hljs-built_in">print</span>(exc.value)     <span class="hljs-comment">#获取返回的值</span>g=my_generator()main(g)<span class="hljs-string">&#x27;&#x27;&#x27;运行结果为：</span><span class="hljs-string">0</span><span class="hljs-string">1</span><span class="hljs-string">我被迫中断了</span><span class="hljs-string">&#x27;&#x27;&#x27;</span></code></pre></div><p>现在我们使用<code>yield from</code>来完成上面的同样的功能：</p><div class="hljs code-wrapper"><pre><code class="hljs python">生成器中<span class="hljs-keyword">return</span>的值 = <span class="hljs-keyword">yield</span> <span class="hljs-keyword">from</span> 生成器对象</code></pre></div><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">my_generator</span>():</span>    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">5</span>):        <span class="hljs-keyword">if</span> i == <span class="hljs-number">2</span>:            <span class="hljs-comment"># 遇到return自动触发StopIteration异常</span>            <span class="hljs-keyword">return</span> <span class="hljs-string">&#x27;我被迫中断了&#x27;</span>        <span class="hljs-keyword">else</span>:            <span class="hljs-keyword">yield</span> i <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">wrap_my_generator</span>(<span class="hljs-params">generator</span>):</span>  <span class="hljs-comment"># 定义一个包装“生成器”的生成器，它的本质还是生成器</span>    result = <span class="hljs-keyword">yield</span> <span class="hljs-keyword">from</span> generator    <span class="hljs-comment"># 自动触发StopIteration异常，并且将return的返回值赋值给yield from表达式的结果，即result</span>    <span class="hljs-built_in">print</span>(result) <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">main</span>(<span class="hljs-params">generator</span>):</span>    <span class="hljs-keyword">for</span> j <span class="hljs-keyword">in</span> generator:        <span class="hljs-built_in">print</span>(j) g = my_generator()wrap_g = wrap_my_generator(g)main(wrap_g)  <span class="hljs-comment">#调用</span><span class="hljs-string">&#x27;&#x27;&#x27;运行结果为：</span><span class="hljs-string">0</span><span class="hljs-string">1</span><span class="hljs-string">我被迫中断了</span><span class="hljs-string">&#x27;&#x27;&#x27;</span></code></pre></div><p>从上面的比较可以看出，<code>yield from</code>具有以下几个<strong>特点</strong>：</p><ol><li><p><strong>单独<code>yield</code>时</strong>：的my_generator是原始的生成器，main是调用方，使用yield的时候，只涉及到这两个函数，即“调用方”与“生成器（协程函数）”是<strong>直接进行交互的，不涉及其他方法</strong>，即<strong>“调用方——&gt;生成器函数(协程函数)”；</strong></p></li><li><p><strong>在使用<code>yield from</code>的时</strong>：多了一个对原始my_generator的<strong>包装函数</strong>，然后<strong>调用方是通过这个包装函数</strong>（后面会讲到它专有的名词）来与<strong>生成器进行交互</strong>的，即<strong>“调用方——&gt;生成器包装函数——&gt;生成器函数(协程函数)”</strong>；</p></li><li><p><code>yield from iteration</code>结构会在内部<strong>自动捕获 iteration生成器的StopIteration 异常</strong>。这种处理方式与 for 循环处理 StopIteration 异常的方式一样。而且对 <code>yield from</code>结构来说，<strong>解释器不仅会捕获 StopIteration 异常，还会把return返回的值或者是StopIteration的value 属性的值变成 yield from 表达式的值，即上面的result。</strong></p></li></ol><blockquote><p>委派生成器：包含 <code>yield from</code> <iterable> <strong>表达式的生成器函数</strong>；即上面的wrap_my_generator<strong>生成器包装函数</strong></p></blockquote><blockquote><p>子生成器：从 <code>yield from</code> 表达式中 <iterable> 部分获取的生成器；即上面的my_generator<strong>生成器函数</strong></p></blockquote><blockquote><p>调用方：<strong>调用委派生成器的客户端代码</strong>；即上面的<strong>main调用方函数</strong></p></blockquote><p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210814184753.png"></p><h4 id="2-yield-from的管道传输用法示例"><a href="#2-yield-from的管道传输用法示例" class="headerlink" title="2. yield from的管道传输用法示例"></a>2. yield from的管道传输用法示例</h4><p>其实<code>yield from</code>最重要的作用就是提供了一个<strong>“数据传输的管道”</strong>，下面通过一个简单的例子加以说明为什么是管道：</p><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">average</span>():</span>    total = <span class="hljs-number">0.0</span>  <span class="hljs-comment">#数字的总和</span>    count = <span class="hljs-number">0</span>    <span class="hljs-comment">#数字的个数</span>    avg = <span class="hljs-literal">None</span>   <span class="hljs-comment">#平均值</span>    <span class="hljs-keyword">while</span> <span class="hljs-literal">True</span>:        num = <span class="hljs-keyword">yield</span> avg        total += num        count += <span class="hljs-number">1</span>        avg = total/count <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">wrap_average</span>(<span class="hljs-params">generator</span>):</span>    <span class="hljs-keyword">yield</span> <span class="hljs-keyword">from</span> generator <span class="hljs-comment">#定义一个函数，通过这个函数向average函数发送数值</span><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">main</span>(<span class="hljs-params">wrap</span>):</span>    <span class="hljs-built_in">print</span>(<span class="hljs-built_in">next</span>(wrap))  <span class="hljs-comment">#启动生成器</span>    <span class="hljs-built_in">print</span>(wrap.send(<span class="hljs-number">10</span>))  <span class="hljs-comment"># 10</span>    <span class="hljs-built_in">print</span>(wrap.send(<span class="hljs-number">20</span>))  <span class="hljs-comment"># 15</span>    <span class="hljs-built_in">print</span>(wrap.send(<span class="hljs-number">30</span>))  <span class="hljs-comment"># 20</span>    <span class="hljs-built_in">print</span>(wrap.send(<span class="hljs-number">40</span>))  <span class="hljs-comment"># 25</span>  g = average()wrap = wrap_average(g)main(wrap) <span class="hljs-string">&#x27;&#x27;&#x27;运行结果为：</span><span class="hljs-string">None</span><span class="hljs-string">10.0</span><span class="hljs-string">15.0</span><span class="hljs-string">20.0</span><span class="hljs-string">25.0</span><span class="hljs-string">&#x27;&#x27;&#x27;</span></code></pre></div><p>从上面我们可以发现，调用方发送的数据是发给<code>wrap_average</code>的，怎么依然到了生成器函数<code>average</code>里面呢？这就是<strong>“数据传输管道的作用”</strong>。即<strong>主函数调用方main把各个value传给grouper</strong> ，而这个传入的值<strong>最终到达averager函数中</strong>； <strong>grouper并不知道传入的是什么值</strong>，因为从上面的代码看出，**<code>wrap_average</code>里面完全没有处理这个值的任何代码！**</p><h2 id="装饰器"><a href="#装饰器" class="headerlink" title="装饰器"></a>装饰器</h2><h3 id="函数引用"><a href="#函数引用" class="headerlink" title="函数引用"></a>函数引用</h3>   <div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">test</span>():</span>    <span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;1&quot;</span>)<span class="hljs-built_in">print</span>(test)<span class="hljs-comment"># &lt;function __main__.test&gt;</span>a = test <span class="hljs-comment"># 变量A指向函数对象</span>a() <span class="hljs-comment"># 变量A可调用函数</span></code></pre></div><h3 id="什么是闭包"><a href="#什么是闭包" class="headerlink" title="什么是闭包"></a>什么是闭包</h3><blockquote><p><strong>在函数内部再定义一个函数，并且这个函数用到了外边函数的变量，那么将这些函数以及用到的一些变量称之为闭包。</strong></p></blockquote><h3 id="闭包的应用"><a href="#闭包的应用" class="headerlink" title="闭包的应用"></a>闭包的应用</h3>   <div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">parse</span>(<span class="hljs-params">number: <span class="hljs-built_in">int</span></span>):</span>    <span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;第一层函数&quot;</span>, number)    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">sum</span>(<span class="hljs-params">number2</span>):</span>        <span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;第二层函数加和后&quot;</span>, number+number2)    <span class="hljs-keyword">return</span> <span class="hljs-built_in">sum</span><span class="hljs-comment"># 接受函数对象的引用</span>func = parse(<span class="hljs-number">100</span>)func(<span class="hljs-number">100</span>)</code></pre></div><p>   <img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210719211704.png"></p><p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210719215011.png"></p><p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210719215459.png"></p><p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210719215842.png"></p><p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210719220126.png"></p><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-comment"># 编写闭包函数</span><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">checkLogin</span>(<span class="hljs-params">func</span>):</span>    <span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;准备检查权限&quot;</span>)    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">inner</span>():</span>        <span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;权限正确!&quot;</span>)        func()  <span class="hljs-comment"># 执行函数的变量</span>    <span class="hljs-keyword">return</span> inner  <span class="hljs-comment"># 返回一个函数对象</span><span class="hljs-comment"># main变量指向的是mian函数</span><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">main</span>():</span>    <span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;执行业务1&quot;</span>)<span class="hljs-comment"># 不用修改主函数的内容,就可以扩展主函数.</span>main = checkLogin(main)  <span class="hljs-comment"># 此时main变量指向的是inner函数</span>main()<span class="hljs-comment"># 等效于</span><span class="hljs-comment"># 到这里python会运行 checkLogin函数,并把下面的函数名变量指向 checkLogin 函数的返回值,即 inner 函数</span><span class="hljs-meta">@checkLogin</span><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">mian</span>():</span>    <span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;执行业务2&quot;</span>)<span class="hljs-comment"># 在调用main之前已经被装饰了</span>mian()</code></pre></div><h3 id="多个修饰器，从下到上修饰"><a href="#多个修饰器，从下到上修饰" class="headerlink" title="多个修饰器，从下到上修饰"></a>多个修饰器，从下到上修饰</h3><p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210720161511.png"></p><blockquote><p><strong>装饰是倒着装的，执行是顺着执行的。</strong></p></blockquote><h3 id="装饰有参数的函数"><a href="#装饰有参数的函数" class="headerlink" title="装饰有参数的函数"></a>装饰有参数的函数</h3><p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210720162540.png"></p><blockquote><p>对不定长参数的传递</p></blockquote><p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210720162754.png"></p><h3 id="装饰有返回值的参数"><a href="#装饰有返回值的参数" class="headerlink" title="装饰有返回值的参数"></a>装饰有返回值的参数</h3><p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210720163328.png" alt="image-20210720163327239"></p><h3 id="通用修饰器"><a href="#通用修饰器" class="headerlink" title="通用修饰器"></a>通用修饰器</h3><p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210720164146.png"></p><h3 id="带参数的修饰器"><a href="#带参数的修饰器" class="headerlink" title="带参数的修饰器"></a>带参数的修饰器</h3><p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210818144548.png"></p><blockquote><p>在函数中嵌套闭包函数</p></blockquote>]]></content>
+    
+    
+    <categories>
+      
+      <category>Python</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Python</tag>
+      
+      <tag>程序</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>Flask Web 框架学习笔记</title>
+    <link href="/2021/08/18/Flask%20Web%20%E6%A1%86%E6%9E%B6%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/"/>
+    <url>/2021/08/18/Flask%20Web%20%E6%A1%86%E6%9E%B6%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/</url>
+    
+    <content type="html"><![CDATA[<h1 id="Flask-Web-框架学习笔记"><a href="#Flask-Web-框架学习笔记" class="headerlink" title="Flask Web 框架学习笔记"></a>Flask Web 框架学习笔记</h1><p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210818152255.png"></p><h2 id="1-Flask-初始化参数"><a href="#1-Flask-初始化参数" class="headerlink" title="1. Flask 初始化参数"></a>1. Flask 初始化参数</h2><blockquote><p><strong>Flask程序实例</strong>在创建的时候，需要<strong>默认传入当前Flask程序所指定的包</strong>(模块).</p></blockquote><ul><li>import name<ul><li>Flask程序所在的包(模块),传 <code>__name__</code> 就可以</li><li>其可以决定Flask在访问静态文件时查找的路径</li></ul></li><li>static_ <em>url</em> _path<ul><li>静态文件访问路径，可以不传，默认为: /+静态文件目录名</li></ul></li><li>static_ folder<br>-静态文件存储的文件夹，可以不传，默认为 static</li><li>template_ folder<ul><li>模板文件存储的文件夹，可以不传，默认为 templates</li></ul></li></ul><h3 id="Flask-基本编写"><a href="#Flask-基本编写" class="headerlink" title="Flask 基本编写"></a>Flask 基本编写</h3><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-comment"># 导入Flask类</span><span class="hljs-keyword">from</span> flask <span class="hljs-keyword">import</span> Flask<span class="hljs-comment">#Flask类接收一个参数 __name__</span>app = Flask(__name__)<span class="hljs-comment"># 装饰器的作用是将路由映射到视图函数index</span><span class="hljs-meta">@app.route(<span class="hljs-params"><span class="hljs-string">&#x27;/&#x27;</span></span>)</span><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">index</span>() :</span><span class="hljs-keyword">return</span> <span class="hljs-string">&#x27;Hello World&#x27;</span><span class="hljs-comment"># Flask应用程序实例的run方法启动WEB服务器</span><span class="hljs-keyword">if</span> __name__ == <span class="hljs-string">&#x27;__main__&#x27;</span>:app.run()</code></pre></div><h2 id="2-Flask-工程配置加载的方式"><a href="#2-Flask-工程配置加载的方式" class="headerlink" title="2. Flask 工程配置加载的方式"></a>2. Flask 工程配置加载的方式</h2><h3 id="使用方式"><a href="#使用方式" class="headerlink" title="使用方式"></a>使用方式</h3><p>Flask将配置信息保存到了<code>app.config</code>属性中，该属性可以按照<strong>字典类型</strong>进行操作。</p><div class="hljs code-wrapper"><pre><code class="hljs python3">app.config.get(name) # 读取app.config[name] # 修改</code></pre></div><h3 id="设置"><a href="#设置" class="headerlink" title="设置"></a>设置</h3><ul><li><p><strong>从配置对象中加载</strong></p><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-keyword">from</span> flask <span class="hljs-keyword">import</span> Flask<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">DefaultConfig</span>(<span class="hljs-params">oject</span>):</span>    <span class="hljs-comment"># 密钥</span>    SECRET_KET = <span class="hljs-string">&#x27;lovehyy2021209classpzezprem&#x27;</span>app = Flask(__name__)app.config.from_object(DefaultConfig) <span class="hljs-comment"># 从配置对象中加载</span><span class="hljs-meta">@app.route(<span class="hljs-params"><span class="hljs-string">&#x27;/&#x27;</span></span>) </span><span class="hljs-comment"># 装饰器-&gt;路由</span><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">index</span>():</span> <span class="hljs-comment"># 视图函数</span>    <span class="hljs-built_in">print</span>(app.config[<span class="hljs-string">&#x27;SECRET_KEY&#x27;</span>])    <span class="hljs-keyword">return</span> <span class="hljs-string">&#x27;hello world&#x27;</span></code></pre></div></li><li><p><strong>从配置文件中加载</strong></p><p>在项目目录下新建<code>setting.py</code>文件，存放大写常量</p><div class="hljs code-wrapper"><pre><code class="hljs python">SECRET_KET = <span class="hljs-string">&#x27;lovehyy2021209classpzezprem&#x27;</span></code></pre></div><p>在Flask程序文件中</p><div class="hljs code-wrapper"><pre><code class="hljs python">app = Flask(__name__)app.config.from_pyfile(<span class="hljs-string">&#x27;setting.py&#x27;</span>) <span class="hljs-comment"># 从配置文件加载</span></code></pre></div></li><li><p><strong>从环境变量中加载</strong></p><blockquote><p><strong>环境变量(environment variables)</strong> 一般是指在操作系统中用来指定操作系统运行环境的一些参数，如:临时文件夹位置和系统文件夹位置等。环境变量是在操作系统中一个具有特定名字的对象，它包含了一个或者多个应用程序所将使用到的信息。</p></blockquote><p><strong>通俗的理解，环境变量就是我们设置在操作系统中，由操作系统代为保存的变量值</strong>:</p><p>在Linux系统中设置和读取环境变量的方式如下:</p><div class="hljs code-wrapper"><pre><code class="hljs shell">export 变量名=变量值 # 设置echo $变量名 # 读取</code></pre></div><p><strong>Flask使用环境变量加载配置的本质是通过环境变量值找到配置文件</strong>，再读取配置文件的信息，其使用方式为：<br><code>app.config.from_ envvar(&#39;环境变量名&#39;)</code></p><p><strong>环境变量的值为配置文件的绝对路径</strong>先在终端中执行如下命令：</p><p><code>export PROJECT_ _SETTING= &#39;~/ setting. py&#39;</code></p><p>再运行如下代码</p><div class="hljs code-wrapper"><pre><code class="hljs python">app = Flask(__ name__)app.config.from_envvar(<span class="hljs-string">&#x27;PROJECT_ SETTING&#x27;</span>, silent=<span class="hljs-literal">True</span>)</code></pre></div></li><li><p><strong>各配置方式优缺点</strong></p><ul><li><strong>app.config.from _object(配置对象)</strong><ul><li>继承- -&gt;优点复用</li><li>敏感数据暴露缺点</li></ul></li><li><strong>app.config.from_pyfile(配置文件)</strong><ul><li>优点 –&gt; 独立文件保护敏感数据</li><li>缺点 –&gt; 不能继承文件路径固定不灵活</li></ul></li><li><strong>app.config.from_envvar(“环境变量名”)</strong><ul><li>优点 –&gt; 独立文件保护敏感数据文件路径不固定灵活</li><li>缺点 –&gt; 不方便要记得设置环境量</li></ul></li><li><strong>设置环境变量</strong><ul><li>终端export</li><li>pycharm设置</li></ul></li></ul></li></ul><h3 id="利用工厂函数设置"><a href="#利用工厂函数设置" class="headerlink" title="利用工厂函数设置"></a>利用工厂函数设置</h3><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-keyword">from</span> flask <span class="hljs-keyword">import</span> Flask<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">DefaultConfig</span>(<span class="hljs-params"><span class="hljs-built_in">object</span></span>):</span>    DEBUG = <span class="hljs-literal">True</span>    SECRET_KEY = <span class="hljs-string">&#x27;lovehyy2021pzez209class&#x27;</span><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">create_flask_app</span>(<span class="hljs-params">config</span>):</span>    <span class="hljs-string">&#x27;&#x27;&#x27;构建flask对象的工厂函数,传入配置对象,返回配置后的app对象&#x27;&#x27;&#x27;</span>    app = Flask(__name__, static_url_path=<span class="hljs-string">&#x27;/static&#x27;</span>, static_folder=<span class="hljs-string">&#x27;static&#x27;</span>)    app.config.from_object(config)    <span class="hljs-keyword">return</span> appapp = create_flask_app(DefaultConfig)<span class="hljs-meta">@app.route(<span class="hljs-params"><span class="hljs-string">&#x27;/&#x27;</span>, methods=[<span class="hljs-string">&quot;GET&quot;</span>]</span>)</span><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">index</span>():</span>    <span class="hljs-keyword">return</span> <span class="hljs-string">&quot;Hello Flask&quot;</span><span class="hljs-keyword">if</span> __name__ == <span class="hljs-string">&#x27;__mian__&#x27;</span>:    app.run()</code></pre></div><h2 id="3-Flask-运行方式"><a href="#3-Flask-运行方式" class="headerlink" title="3. Flask 运行方式"></a>3. Flask 运行方式</h2><h3 id="直接运行py文件启动"><a href="#直接运行py文件启动" class="headerlink" title="直接运行py文件启动"></a>直接运行py文件启动</h3><p>可以指定运行的主机IP地址，端口，是否开启调试模式</p><div class="hljs code-wrapper"><pre><code class="hljs python">app.run(host=<span class="hljs-string">&quot;0.0.0.0&quot;</span>, port=<span class="hljs-number">5000</span>, debug=<span class="hljs-literal">True</span>)</code></pre></div><p>关于<strong>DEBUG调试模式</strong>：</p><ol><li>程序代码修改后可以自动重启服务器</li><li>在服务器出现相关错误的时候可以直接将错误信息返回到前端进行展示</li></ol><h3 id="新版启动方式"><a href="#新版启动方式" class="headerlink" title="新版启动方式"></a>新版启动方式</h3><p><strong>开发服务器</strong>启动方式：<br>在1.0版本之后，Flask调整了开发服务器的启动方式，由代码编写app. run()语句调整为<strong>命令启动flask</strong></p><p>终端启动：</p><div class="hljs code-wrapper"><pre><code class="hljs shell">export FLASK_APP=main # 设置启动的python文件flask run # 在项目文件下执行</code></pre></div><h3 id="说明"><a href="#说明" class="headerlink" title="说明"></a>说明</h3><p>环境变量 <strong>FLASK_APP</strong> 指明flask的启动实例：</p><ul><li><code>flask run -h 0.0.0.0 -p 8000</code>绑定地址端口</li><li><code>flask run --help</code> 获取帮助</li><li>生产模式与开发模式的控制<br>通过<code>FLASK_ENV</code>环境变量指明<ul><li><code>export FLASK_ ENV=production</code> 运行在生产模式，未指明则默认为此方式</li><li><code>export FLASK_ ENV=development</code> 运行在开发模式</li></ul></li></ul><h2 id="4-Flask-路由"><a href="#4-Flask-路由" class="headerlink" title="4. Flask 路由"></a>4. Flask 路由</h2><h3 id="查询路由信息"><a href="#查询路由信息" class="headerlink" title="查询路由信息"></a>查询路由信息</h3><ul><li><p>命令行方式</p><div class="hljs code-wrapper"><pre><code class="hljs shell">flask routes</code></pre></div></li><li><p>在应用中的<code>url_ map</code>属性中保存着整个Flask应用的<strong>路由映射信息</strong>，可以通过读取这个属性获取<strong>路由信息</strong>。</p><p><code>print(app.url_map)</code><br>如果想在程序中遍历路由信息，可以采用如下方式：</p><div class="hljs code-wrapper"><pre><code class="hljs python">  <span class="hljs-keyword">for</span> rule <span class="hljs-keyword">in</span> app.url_map.iter_rules():      <span class="hljs-comment"># endpoint 视图函数的名字</span>      <span class="hljs-comment"># rule 路由的路径</span>  <span class="hljs-built_in">print</span>( <span class="hljs-string">&#x27;name=&#123;&#125; path=&#123;&#125;&#x27;</span>. <span class="hljs-built_in">format</span>(rule.endpoint, rule.rule))- 搭建一个**返回所有路由信息**的json接口  ```python<span class="hljs-meta">  @app.route(<span class="hljs-params"><span class="hljs-string">&#x27;/&#x27;</span>, methods=[<span class="hljs-string">&quot;GET&quot;</span>]</span>)</span>  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">index</span>():</span>      <span class="hljs-comment"># for rule in app.url_map.iter_rules():</span>      <span class="hljs-comment">#     print(f&quot;name=&#123;rule.endpoint&#125;;path=&#123;rule.rule&#125;&quot;)</span>      rules_iterator = app.url_map.iter_rules()      <span class="hljs-comment"># 字典推导式</span>      dic = &#123;          rule.endpoint: rule.rule          <span class="hljs-keyword">for</span> rule <span class="hljs-keyword">in</span> rules_iterator      &#125;      <span class="hljs-comment"># 利用jsonify返回json数据</span>      <span class="hljs-keyword">return</span> jsonify(dic)</code></pre></div></li></ul><h2 id="5-路由-options-限定请求方式-methods"><a href="#5-路由-options-限定请求方式-methods" class="headerlink" title="5. 路由 options 限定请求方式 methods"></a>5. 路由 options 限定请求方式 methods</h2><h3 id="请求方式"><a href="#请求方式" class="headerlink" title="请求方式"></a>请求方式</h3><ul><li><p><strong>GET</strong>(自带)</p></li><li><p><strong>OPTIONS</strong>(自带)  -&gt; 简化版的GET请求用于询问服务器接口信息的<br>比如接口允许的请求方式允许的</p><blockquote><p>CORS跨域:<br><a href="http://www.meiduo.site/">www.meiduo.site</a> -&gt; api.meiduo.site/users/1<br>options api.meiduo.site/uses/1</p></blockquote></li><li><p><strong>HEAD</strong>(自带) -&gt; 简化版的GET请求</p><blockquote><p>只返回GET请求处理时的响应头，不返回响应体。</p></blockquote></li></ul><h3 id="指定接口请求方式"><a href="#指定接口请求方式" class="headerlink" title="指定接口请求方式"></a>指定接口请求方式</h3><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-comment"># 利用修饰器中的methods返回设定请求接口方式</span><span class="hljs-comment"># 定义视图</span><span class="hljs-meta">@app.route(<span class="hljs-params"><span class="hljs-string">&#x27;/&#x27;</span>, methods=[<span class="hljs-string">&quot;POST&quot;</span>]</span>)</span><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">index</span>():</span>    <span class="hljs-keyword">return</span> <span class="hljs-string">&#x27;POST API&#x27;</span></code></pre></div><h2 id="6-蓝图"><a href="#6-蓝图" class="headerlink" title="6. 蓝图"></a>6. 蓝图</h2><h3 id="引入"><a href="#引入" class="headerlink" title="引入"></a>引入</h3><p>在一个<strong>Flask应用项目</strong>中，如果<strong>业务视图</strong>过多，可以用某种方式划分出的<strong>业务单元单独维护</strong>，将每个单元用到的<strong>视图、静态文件、模板文件</strong>等独立分开。</p><p>例如从<strong>业务角度</strong>上，可将整个应用划分为<strong>用户模块单元、商品模块单元、订单模块单元</strong>，分别开发这些不同单元，并最终整合到一个项目应用中。</p><h3 id="蓝图"><a href="#蓝图" class="headerlink" title="蓝图"></a>蓝图</h3><p>在Flask中，使用<strong>蓝图Blueprint</strong>来分模块组织管理。</p><p>蓝图实际可以理解为是<strong>一个存储一组视图方法的容器对象</strong>，其具有如下特点:</p><ul><li>一个应用可以具有<strong>多个Blueprint</strong></li><li>可以将一个<strong>Blueprint注册到</strong>任何一个未使用的<strong>URL</strong>下，比如“/user”、 “/godds”。</li><li><strong>Blueprint</strong>可以单独具有<strong>自己的模板、静态文件</strong>或者其它的通用操作方法，它并不是必须要实现应用的视图和函数的</li><li>在一个<strong>应用初始化</strong>时，就应该要<strong>注册需要使用的Blueprint</strong>。★</li><li>但是一个<strong>Blueprint</strong>并不是一个完整的应用，它<strong>不能独立于应用运行</strong>，而必须要<strong>注册到某一个应用中</strong>。★</li></ul><h3 id="定义蓝图"><a href="#定义蓝图" class="headerlink" title="定义蓝图"></a>定义蓝图</h3><ol><li><p>定义</p><div class="hljs code-wrapper"><pre><code class="hljs python">user_bp = Blueprint(<span class="hljs-string">&#x27;user&#x27;</span>, __name__)</code></pre></div></li><li><p>在这个<strong>蓝图对象上进行操作</strong>,<strong>注册路由</strong>,<strong>指定静态文件夹</strong>,<strong>注册模版过滤器</strong></p><div class="hljs code-wrapper"><pre><code class="hljs python"><span class="hljs-meta">@user_bp.route(<span class="hljs-params"><span class="hljs-string">&#x27;/&#x27;</span></span>)</span><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">user_profile</span>():</span>    <span class="hljs-keyword">return</span> <span class="hljs-string">&#x27;user_profile&#x27;</span></code></pre></div></li><li><p>在应用对象中注册这个蓝图对象</p><div class="hljs code-wrapper"><pre><code class="hljs python">app.register_blueprint(user_bp)</code></pre></div></li></ol><h3 id="单文件蓝图"><a href="#单文件蓝图" class="headerlink" title="单文件蓝图"></a>单文件蓝图</h3><p>可以将创建蓝图对象与定义视图函数放在一个文件中。</p><h3 id="目录（包）蓝图"><a href="#目录（包）蓝图" class="headerlink" title="目录（包）蓝图"></a>目录（包）蓝图</h3><p>对于一个打算包含<strong>多个文件的蓝图</strong>，通常将<strong>创建蓝图对象</strong>放到Python包的<code>__init__.py</code> 文件中</p><div class="hljs code-wrapper"><pre><code class="hljs jboss-cli"><span class="hljs-params">---------</span> project <span class="hljs-comment"># 工程目录</span>|<span class="hljs-params">----</span> main.py <span class="hljs-comment"># 启动文件</span>|<span class="hljs-params">----</span> user <span class="hljs-comment"># 用户蓝图</span>||<span class="hljs-params">----</span> __init__.py <span class="hljs-comment"># 此处创建蓝图对象</span>||<span class="hljs-params">----</span> views.py</code></pre></div><p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210725224412.png" alt="蓝图包目录实例"></p><h4 id="循环引用问题"><a href="#循环引用问题" class="headerlink" title="循环引用问题"></a>循环引用问题</h4><p><img src="https://cdn.jsdelivr.net/gh/AdminWhaleFall/Pic@master/img/20210725224744.png" alt="循环引用问题"></p><blockquote><p>所以导入视图函数要放在 <code>__init__.py</code> 文件的最后</p></blockquote><h3 id="蓝图内部静态文件"><a href="#蓝图内部静态文件" class="headerlink" title="蓝图内部静态文件"></a>蓝图内部静态文件</h3><p>和<strong>应用对象</strong>不同，蓝图对象创建时<strong>不会默认注册静态目录的路由</strong>。需要我们在创建时指定<code>static_folder</code>参数。</p><p>下面的示例将蓝图所在目录下的<code>static_admin</code>目录设置为静态目录</p><div class="hljs code-wrapper"><pre><code class="hljs python">admin = Blueprint (<span class="hljs-string">&quot;admin&quot;</span>,__ name__ , static_folder=<span class="hljs-string">&#x27;static_admin&#x27;</span>)app.register_blueprint (admin, url_prefix=<span class="hljs-string">&#x27;/admin&#x27;</span> )</code></pre></div><p>现在就可以使用<code>/admin/static_admin/&lt;filename&gt;</code>访问<code>static_ admin</code>目录下的静态文件了。<br>也可通过<code>static_url_path</code>改变访问路径</p><div class="hljs code-wrapper"><pre><code class="hljs python">admin = Blueprint(<span class="hljs-string">&quot;admin&quot;</span>,__name__, static_folder=<span class="hljs-string">&#x27;static_admin&#x27;</span> ,static_url_path=<span class="hljs-string">&#x27;/lib&#x27;</span>)app.register_blueprint(admin, url_prefix=<span class="hljs-string">&#x27;/admin&#x27;</span>)</code></pre></div><h2 id="7-处理请求"><a href="#7-处理请求" class="headerlink" title="7. 处理请求"></a>7. 处理请求</h2><blockquote><p>在视图编写中需要读取客户端请求携带的数据时，如何才能正确的<strong>取出数据</strong>呢?<br><strong>请求携带的数据</strong>可能出现在HTTP报文中的不同位置，需要<strong>使用不同的方法来获取参数</strong>。</p></blockquote>]]></content>
+    
+    
+    <categories>
+      
+      <category>Python</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Python</tag>
+      
+      <tag>程序</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助理每日攻略</title>
+    <link href="/2021/08/18/2021-08-18%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/08/18/2021-08-18%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助理每日攻略"><a href="#光遇小助理每日攻略" class="headerlink" title="光遇小助理每日攻略"></a>光遇小助理每日攻略</h1><p><strong>👑2021年8月18日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210818/002238-ajiupw4lf2.png"></p><p>任务： <strong>2人合力开启一道门</strong></p><p>位置：有双人门的场景，比如云野、霞谷、禁阁</p><p>步骤：点燃双人门一边的机关，有玩家点燃另一边开启门的话，就能完成任务啦</p><p>难度：⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210818/002331-zeqi3fusgr.png"></p><p>任务： <strong>收集蓝色光芒</strong></p><p>位置：霞谷-滑冰场</p><p>步骤：进入霞谷后，往前方滑行，来到滑冰场下方收集蓝色光芒</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210818/002415-g9e85n6mco.png"></p><p>任务： <strong>净化10株黑暗植物</strong></p><p>位置：有黑暗植物的地图，比如雨林、云野、墓土</p><p>步骤：用蜡烛将黑暗植物燃烧掉即可。</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210818/003007-v63stcew2f.png"></p><p>任务： <strong>在霞光城拱门上冥想</strong></p><p>位置：霞谷-拱门上方</p><p>步骤：从霞谷滑冰场进入霞光城（去飞行赛道的方向），走完长阶梯后，可以找到的拱门上面的冥想点~</p><p>难度：⚡⚡⚡</p><p> <strong>🌹2021年8月18日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210818/001917-us6vw37rbq.png"></p><p> <strong>🔥2021年8月18日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210818/002151-4azg6v8r9i.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助理每日攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助理每日攻略</title>
+    <link href="/2021/08/17/2021-08-17%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/08/17/2021-08-17%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助理每日攻略"><a href="#光遇小助理每日攻略" class="headerlink" title="光遇小助理每日攻略"></a>光遇小助理每日攻略</h1><p><strong>👑2021年8月17日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210817/001746-1u0bdtgsn6.png"></p><p>任务： <strong>2人合力开启一道门</strong></p><p>位置：有双人门的场景，比如云野、霞谷、禁阁</p><p>步骤：点燃双人门一边的机关，有玩家点燃另一边开启门的话，就能完成任务啦</p><p>难度：⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210817/001829-pz5iflms8d.png"></p><p>任务： <strong>收集绿色光芒</strong></p><p>位置：云野-右边隐藏图</p><p>步骤：进入云野一图后往右边走，进入隐藏地图，在左侧的浮空岛等候绿色光芒掉落，需要有一定的耐心噢</p><p>难度：⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210817/001915-dc928varyj.png"></p><p>任务： <strong>净化10株黑暗植物</strong></p><p>位置：有黑暗植物的地图，比如雨林、云野、墓土</p><p>步骤：用蜡烛将黑暗植物燃烧掉即可。</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210817/001940-r28lgos9ea.png"></p><p>任务： <strong>在密林遗迹冥想</strong></p><p>位置：雨林-密林遗迹（断桥图/水母图）</p><p>步骤：来到雨林断桥图后，冥想点在断桥旁边的亭子里~</p><p>难度：⚡⚡</p><p> <strong>🌹2021年8月17日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210817/001719-ifgy1o6hut.png"></p><p> <strong>🔥2021年8月17日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210817/002036-cje8nogtka.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助理每日攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助理每日攻略</title>
+    <link href="/2021/08/16/2021-08-16%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/08/16/2021-08-16%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助理每日攻略"><a href="#光遇小助理每日攻略" class="headerlink" title="光遇小助理每日攻略"></a>光遇小助理每日攻略</h1><p><strong>👑2021年8月16日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210816/005221-4w8le3o051.png"></p><p>任务： <strong>向一位朋友做个动作</strong></p><p>位置：任意场景</p><p>步骤：传送到好友的房间，面向好友，点开动作列表后使用任意动作即可</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210816/005325-jysl13oq9h.png"></p><p>任务： <strong>净化10株黑暗植物</strong></p><p>位置：有黑暗植物的地图，比如雨林、云野、墓土</p><p>步骤：用蜡烛将黑暗植物燃烧掉即可。</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210816/005402-ltebqw57jo.png"></p><p>任务： <strong>收集橙色光芒</strong></p><p>位置：雨林-密林遗迹（水母图）</p><p>步骤：进入雨林四图后往左前方走，在树林里收集橙色光芒，能量充足可以飞起来收集，也可以在下方等光芒经过</p><p>难度：⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210816/005438-tap75u8ndc.png"></p><p>任务： <strong>在云顶浮石上冥想</strong></p><p>位置：云野-右侧隐藏图（去圣岛的方向）</p><p>步骤：进入云野后往右边走，进入隐藏图，找到光圈完成冥想即可~</p><p>难度：⚡</p><p> <strong>🌹2021年8月16日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210816/004606-ifvsu9p7og.png"></p><p> <strong>🔥2021年8月16日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210816/005154-y5972iwufs.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210816/005146-usigjq9e26.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210816/005129-2hjz4p7esg.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210816/005123-ym26e491f3.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210816/004716-oghatz6vy8.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210816/004632-v1ci6bnk8z.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210816/004627-jgqdp0y8n1.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助理每日攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助理每日攻略</title>
+    <link href="/2021/08/15/2021-08-15%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/08/15/2021-08-15%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助理每日攻略"><a href="#光遇小助理每日攻略" class="headerlink" title="光遇小助理每日攻略"></a>光遇小助理每日攻略</h1><p><strong>👑2021年8月15日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210815/012259-4tksyo38e7.png"></p><p>任务： <strong>接受一位朋友的礼物</strong></p><p>位置：遇境</p><p>步骤：点开好友星盘，收取好友给自己赠送的心火或者爱心</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210815/012201-d9im6v3yoc.png"></p><p>任务： <strong>收集紫色光芒</strong></p><p>位置：禁阁-地下室</p><p>步骤：进入禁阁往右边走，开启双人门进入地下室，通道出来可以看到紫色光芒，飞起进行收集即可</p><p>难度：⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210815/012348-fs6qy0zlow.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210815/012359-a17gpovks2.png"></p><p>任务： <strong>拯救一只被黑暗藤蔓困住的遥鲲</strong></p><p>位置：雨林-密林遗迹（断桥图/水母图）</p><p>步骤：蜡烛烧掉黑暗藤蔓，让遥鲲飞走即可完成任务。</p><p>难度：⚡⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210815/012508-7fm2hqyuti.png"></p><p>任务： **在禁阁重温先祖的美好回忆  **</p><p>位置：禁阁-三层</p><p>步骤：到禁阁三层，完成回忆任务即可</p><p>难度：⚡</p><p> <strong>🌹2021年8月15日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210815/012117-t07l6sckvm.png"></p><p> <strong>🔥2021年8月15日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210815/012756-djcepz86fm.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210815/012743-ktyo6dfwlr.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210815/012737-nfepzdw8hc.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210815/012737-eqk0bnsycp.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210815/012728-r8yob3ts4c.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210815/012723-mza0lnuftd.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210815/012719-qsvoc0jtyg.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210815/012714-372ator5n1.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210815/012806-eibgzsnf5r.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助理每日攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助理每日攻略</title>
+    <link href="/2021/08/14/2021-08-14%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/08/14/2021-08-14%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助理每日攻略"><a href="#光遇小助理每日攻略" class="headerlink" title="光遇小助理每日攻略"></a>光遇小助理每日攻略</h1><p><strong>👑2021年8月14日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210814/005809-w742crzpvy.png"></p><p>任务： <strong>向一位朋友做个动作</strong></p><p>位置：任意场景</p><p>步骤：传送到好友的房间，面向好友，点开动作列表后使用任意动作即可</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210814/005857-9v3hnus5r6.png"></p><p>任务： <strong>在巨兽荒原的神坛旁冥想</strong></p><p>位置：墓土-巨兽荒原（三图）</p><p>步骤：进入墓土三图后，直接往前飞，着陆之后往右边走，在光圈内完成冥想。光线较暗，注意躲避冥龙哦</p><p>难度：⚡⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210814/005943-3szevyskah.png"></p><p>任务： <strong>收集橙色光芒</strong></p><p>位置：雨林-密林遗迹（水母图）</p><p>步骤：进入雨林四图后往左前方走，在树林里收集橙色光芒，能量充足可以飞起来收集，也可以在下方等光芒经过</p><p>难度：⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210814/010103-21fp4358kd.png"></p><p>任务： <strong>掀翻5只螃蟹</strong></p><p>位置：有螃蟹的场景，比如墓土、雨林</p><p>步骤：长按自己的角色大叫即可掀翻身边的螃蟹。</p><p>难度：⚡⚡</p><p> <strong>🌹2021年8月14日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210814/005654-esimtu8r57.png"></p><p> <strong>🔥2021年8月14日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210814/005742-bkohz5vfyp.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210814/010301-b2ss139wdt.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210814/010258-zys71c0p9a.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210814/010434-gq5td0kvl7.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210814/010428-yrd3oqvel2.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210814/010501-ipha9kez7c.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210814/010452-v9n1pq8d0o.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助理每日攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助理每日攻略</title>
+    <link href="/2021/08/13/2021-08-13%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/08/13/2021-08-13%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助理每日攻略"><a href="#光遇小助理每日攻略" class="headerlink" title="光遇小助理每日攻略"></a>光遇小助理每日攻略</h1><p><strong>👑2021年8月13日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210813/011154-z489tfwp63.png"></p><p>任务： <strong>和朋友击掌</strong></p><p>位置：任意场景</p><p>步骤：点击好友，在好友树使用【击掌】</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210813/011334-z7p2rf1kv4.png"></p><p>任务： <strong>收集橙色光芒</strong></p><p>位置：雨林-密林遗迹（水母图）</p><p>步骤：进入雨林四图后往左前方走，在树林里收集橙色光芒，能量充足可以飞起来收集，也可以在下方等光芒经过</p><p>难度：⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210813/011407-y1zqb43n0g.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210813/011436-nzkcmi0ta8.png"></p><p>任务： <strong>拯救一只被黑暗藤蔓困住的遥鲲</strong></p><p>位置：雨林-密林遗迹（断桥图/水母图）</p><p>步骤：蜡烛烧掉黑暗藤蔓，让遥鲲飞走即可完成任务。</p><p>难度：⚡⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210813/011517-yvjd0bu62o.png"></p><p>任务： <strong>在滑冰场旁冥想</strong></p><p>位置：霞谷-滑冰场</p><p>步骤：来到霞谷滑冰场，冥想点在高处的山上~</p><p>难度：⚡</p><p> <strong>🌹2021年8月13日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210813/010647-vbwsdg57j2.png"></p><p> <strong>🔥2021年8月13日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210813/010817-dzu3t9y4rs.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210813/010856-2v3n0zj94y.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210813/010732-97v0ik548t.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210813/010718-r4sl018ub5.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210813/010955-h5o3ym6juf.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210813/010947-5hy01wnmik.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210813/011112-37snc0y4db.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210813/011102-5rzsm870eh.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助理每日攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇08.12复刻攻略</title>
+    <link href="/2021/08/12/2021-08-12%20%E5%85%89%E9%81%8708.12%E5%A4%8D%E5%88%BB%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/08/12/2021-08-12%20%E5%85%89%E9%81%8708.12%E5%A4%8D%E5%88%BB%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇08-12复刻攻略"><a href="#光遇08-12复刻攻略" class="headerlink" title="光遇08.12复刻攻略"></a>光遇08.12复刻攻略</h1><p><img src="https://ok.166.net/reunionpub/ds/kol/20210812/095752-aujgtir0lw.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210812/095804-wyq0bktsa1.jpeg"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇08.12复刻攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助理每日攻略</title>
+    <link href="/2021/08/12/2021-08-12%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/08/12/2021-08-12%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助理每日攻略"><a href="#光遇小助理每日攻略" class="headerlink" title="光遇小助理每日攻略"></a>光遇小助理每日攻略</h1><p><strong>👑2021年8月12日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210812/001856-op5gesihc6.png"></p><p>任务： <strong>收集紫色光芒</strong></p><p>位置：禁阁-地下室</p><p>步骤：进入禁阁往右边走，开启双人门进入地下室，通道出来可以看到紫色光芒，飞起进行收集即可</p><p>难度：⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210812/001958-calh5ui4sm.png"></p><p>任务： <strong>点燃20根蜡烛</strong></p><p>位置：任意场景</p><p>步骤：点燃20根蜡烛即可完成任务，跑图的时候可以顺便做任务哦。</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210812/002245-0bjf4oguns.png"></p><p>任务： <strong>给一位朋友送礼</strong></p><p>位置：遇境</p><p>步骤：点开好友星盘，选择一位好友赠送爱心（消耗3根蜡烛）</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210812/002339-fs01zg2bjk.png"></p><p>任务： **在雨林重温先祖的美好回忆  **</p><p>位置：雨林一图</p><p>步骤：进入第一道门后可看到先祖，要注意避雨哦。</p><p>难度：⚡</p><p> <strong>🌹2021年8月12日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210812/001531-3djskp970t.png"></p><p> <strong>🔥2021年8月12日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210812/001607-j9th6vy8ur.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210812/001554-m0wjduq61a.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210812/001549-vo9fn6jkt0.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210812/001726-y5asp1n6md.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210812/001652-eszwfdyk31.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210812/001648-9ealqkjz6g.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助理每日攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助理每日攻略</title>
+    <link href="/2021/08/11/2021-08-11%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/08/11/2021-08-11%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助理每日攻略"><a href="#光遇小助理每日攻略" class="headerlink" title="光遇小助理每日攻略"></a>光遇小助理每日攻略</h1><p><strong>👑2021年8月11日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210811/001027-elriofqn63.png"></p><p>任务： <strong>向一位朋友做个动作</strong></p><p>位置：任意场景</p><p>步骤：传送到好友的房间，面向好友，点开动作列表后使用任意动作即可</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210811/001051-du6gzph9nv.png"></p><p>任务： <strong>收集紫色光芒</strong></p><p>位置：禁阁-地下室</p><p>步骤：进入禁阁往右边走，开启双人门进入地下室，通道出来可以看到紫色光芒，飞起进行收集即可</p><p>难度：⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210811/001128-kp91yvrs4i.png"></p><p>任务： <strong>掀翻5只螃蟹</strong></p><p>位置：有螃蟹的场景，比如墓土、雨林</p><p>步骤：长按自己的角色大叫即可掀翻身边的螃蟹。</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210811/002340-lazs6khec8.png"></p><p>任务： <strong>在仙乡的金塔下冥想</strong></p><p>位置：云野-三座金塔地图</p><p>步骤：进入云野后往前方走，来到三座塔的地图，往左边飞，在金塔旁边找到光圈，完成冥想~</p><p>难度：⚡</p><p> <strong>🌹2021年8月11日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210811/001323-l7izsq851v.png"></p><p> <strong>🔥2021年8月11日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210811/002016-3817rqgbzc.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210811/002008-wqf7n81m45.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210811/001752-9i2zvnmco3.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210811/001707-vor1mk352l.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210811/001709-g5nb4evc0m.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210811/001605-oqrpe26jmu.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210811/001604-puy87fv6bs.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助理每日攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助理每日攻略</title>
+    <link href="/2021/08/10/2021-08-10%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/08/10/2021-08-10%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助理每日攻略"><a href="#光遇小助理每日攻略" class="headerlink" title="光遇小助理每日攻略"></a>光遇小助理每日攻略</h1><p><strong>👑2021年8月10日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210810/001416-rgdpb4ketj.png"></p><p>任务： <strong>收集30点烛光</strong></p><p>位置：任意场景</p><p>步骤：收集30点烛光即可完成任务，跑图的时候可以顺便做任务哦。</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210810/001557-2v80s6uyfc.png"></p><p>任务： <strong>向一位朋友招手</strong></p><p>位置：任意场景</p><p>步骤：传送到好友的房间，面向好友，点开动作列表后使用【招手】即可</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210810/001637-dpwkn3v6b9.png"></p><p>任务： <strong>收集红色光芒</strong></p><p>位置：墓土-遗忘方舟</p><p>步骤：进入墓土一图后往右边走，乘坐小船进入遗忘方舟地图，一直往前即可找到红色光芒！</p><p>难度：⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210810/001723-ezul95v7mq.png"></p><p>任务： <strong>在禁阁的神坛旁冥想</strong></p><p>位置：禁阁-顶层</p><p>步骤：来到禁阁的顶层，即可找到冥想点</p><p>难度：⚡⚡</p><p> <strong>🌹2021年8月10日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210810/001255-cklimosbqj.png"></p><p> <strong>🔥2021年8月10日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210810/001918-hnbmspdyz1.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210810/001907-dtfrkqjwep.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210810/001902-muw652sgsl.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210810/002106-fsw5v4s6gu.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210810/002106-lp79d0o64t.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210810/002226-7n4k2eshma.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210810/002223-qoajn4heus.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助理每日攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助理每日攻略</title>
+    <link href="/2021/08/09/2021-08-09%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/08/09/2021-08-09%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助理每日攻略"><a href="#光遇小助理每日攻略" class="headerlink" title="光遇小助理每日攻略"></a>光遇小助理每日攻略</h1><p><strong>👑2021年8月9日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210809/001432-ctdq8uylve.png"></p><p>任务： <strong>向一位朋友做个动作</strong></p><p>位置：任意场景</p><p>步骤：传送到好友的房间，面向好友，点开动作列表后使用任意动作即可</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210809/001546-5id3mltpzs.png"></p><p>任务： <strong>在墓土追逐散落的星光</strong></p><p>位置：墓土一图</p><p>步骤：来到墓土一图触碰到飞舞的星光即可完成任务。</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210809/001705-sirqwtd5bo.png"></p><p>任务： <strong>在巨兽荒原的神坛旁冥想</strong></p><p>位置：墓土-巨兽荒原（三图）</p><p>步骤：进入墓土三图后，直接往前飞，着陆之后往右边走，在光圈内完成冥想。光线较暗，注意躲避冥龙哦</p><p>难度：⚡⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210809/001758-salycsg10b.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210809/001750-gsfpbijd29.png"></p><p>任务： <strong>拯救一只被黑暗藤蔓困住的遥鲲</strong></p><p>位置：雨林-密林遗迹（断桥图/水母图）</p><p>步骤：蜡烛烧掉黑暗藤蔓，让遥鲲飞走即可完成任务。</p><p>难度：⚡⚡⚡</p><p> <strong>🌹2021年8月9日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210809/001847-at1slf4eic.png"></p><p> <strong>🔥2021年8月9日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210809/002914-vsdopljrfy.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210809/002943-th57rkocl2.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210809/002939-ocizrgubak.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210809/002832-y1qv5bow4m.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210809/002821-upjk5er96n.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210809/002817-o9sti3rm6k.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210809/002807-lzd3bvisor.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210809/002759-vsbc4komry.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助理每日攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助理</title>
+    <link href="/2021/08/08/2021-08-08%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86/"/>
+    <url>/2021/08/08/2021-08-08%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助理"><a href="#光遇小助理" class="headerlink" title="光遇小助理"></a>光遇小助理</h1><p><strong>👑2021年8月8日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210808/091102-0g7z5sibf8.png"></p><p>任务： <strong>接受一位朋友的礼物</strong></p><p>位置：遇境</p><p>步骤：点开好友星盘，收取好友给自己赠送的心火或者爱心</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210808/091152-ev39aftij1.png"></p><p>任务： <strong>收集蓝色光芒</strong></p><p>位置：霞谷-滑冰场</p><p>步骤：进入霞谷后，往前方滑行，来到滑冰场下方收集蓝色光芒</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210808/091227-c4ys563hlr.png"></p><p>任务： <strong>收集30点烛光</strong></p><p>位置：任意场景</p><p>步骤：收集30点烛光即可完成任务，跑图的时候可以顺便做任务哦。</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210808/091345-9r8231cls4.png"></p><p>任务： <strong>在滑冰场旁冥想</strong></p><p>位置：霞谷-滑冰场</p><p>步骤：来到霞谷滑冰场，冥想点在高处的山上~</p><p>难度：⚡</p><p> <strong>🌹2021年8月8日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210808/091034-4qt3udzpji.png"></p><p> <strong>🔥2021年8月8日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210808/091553-ney79d8gt5.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210808/091545-5q986b1gnj.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210808/091528-cajydre4m0.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210808/091521-d6rjcpmzfe.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210808/091450-67j5ss8vqw.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210808/091620-sdprcwm20b.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210808/091617-05a8qdwmhk.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210808/091707-l5sken0vw1.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210808/091659-jwzpbg4foh.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助理</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助理每日攻略</title>
+    <link href="/2021/08/07/2021-08-07%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/08/07/2021-08-07%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助理每日攻略"><a href="#光遇小助理每日攻略" class="headerlink" title="光遇小助理每日攻略"></a>光遇小助理每日攻略</h1><p><strong>👑2021年8月7日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210807/010857-4y1sfcgauh.png"></p><p>任务： <strong>向一位玩家鞠躬</strong></p><p>位置：任意场景</p><p>步骤：传送到好友的房间，面向好友，点开动作列表后使用【鞠躬】即可</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210807/010951-04h8is9q6s.png"></p><p>任务： <strong>在静谧庭院外冥想</strong></p><p>位置：雨林-一图</p><p>步骤：进入雨林后往下方飞（不要进入下一张地图），在左边的空地找到光圈完成冥想~</p><p>难度： <strong>⚡</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210807/011054-ml93uhdpsb.png"></p><p>任务： <strong>掀翻5只螃蟹</strong></p><p>位置：有螃蟹的场景，比如墓土、雨林</p><p>步骤：长按自己的角色大叫即可掀翻身边的螃蟹。</p><p>难度：⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210807/011232-nskrq51yh3.png"></p><p>任务： <strong>收集青色光芒</strong></p><p>位置：云野-进门往反方向进入</p><p>步骤：进入云野后不要跳下去，直接向后转进入，在云层里收集青色光芒</p><p>难度：⚡</p><p> <strong>🌹2021年8月7日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210807/010809-vnp4s62b8c.png"></p><p> <strong>🔥2021年8月7日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210807/011427-yfvgp5won4.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210807/011416-mv4rkebps9.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210807/011410-7qtfd4cump.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210807/011403-w9o8rld7n1.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210807/011351-ckf6t5mg3o.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210807/011335-a7yn0jos5w.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210807/011329-9twcjob3eq.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210807/011322-ishb7su195.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助理每日攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助理每日攻略</title>
+    <link href="/2021/08/06/2021-08-06%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/08/06/2021-08-06%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助理每日攻略"><a href="#光遇小助理每日攻略" class="headerlink" title="光遇小助理每日攻略"></a>光遇小助理每日攻略</h1><p><strong>👑2021年8月6日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210806/003947-9umpsr0s5e.png"></p><p>任务： <strong>净化10株黑暗植物</strong></p><p>位置：有黑暗植物的地图，比如雨林、云野、墓土</p><p>步骤：用蜡烛将黑暗植物燃烧掉即可</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210806/003514-0nzlioy93k.png"></p><p>任务： <strong>和陌生人一起坐在长凳上</strong></p><p>位置：有长凳的场景，比如云野</p><p>步骤：坐在长凳的一侧，有玩家坐在另一侧即可完成任务</p><p>难度：⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210806/003911-9m7zs2a04p.png"></p><p>任务： <strong>在幽光山洞里冥想</strong></p><p>位置：云野-左侧隐藏图</p><p>步骤：进入云野后往左边走，进入隐藏图，找到山洞中光圈完成冥想即可~</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210806/003827-ypesh3cm7d.png"></p><p>任务： <strong>收集红色光芒</strong></p><p>位置：墓土-遗忘方舟</p><p>步骤：进入墓土一图后往右边走，乘坐小船进入遗忘方舟地图，一直往前即可找到红色光芒！</p><p>难度：⚡⚡</p><p> <strong>🌹2021年8月6日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210806/004015-8qomwe6b5s.png"></p><p> <strong>🔥2021年8月6日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210806/004051-7jaf42sbn1.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210806/004049-hto2wn7qil.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210806/004041-7d9qnayloz.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210806/004037-muswd6znsy.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210806/004057-gypi0u3saq.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210806/004110-49pgv2u7se.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210806/004111-0gqovazkr2.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210806/004119-s1d0zcp6h3.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助理每日攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助理每日攻略</title>
+    <link href="/2021/08/05/2021-08-05%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/08/05/2021-08-05%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助理每日攻略"><a href="#光遇小助理每日攻略" class="headerlink" title="光遇小助理每日攻略"></a>光遇小助理每日攻略</h1><p><strong>👑2021年8月5日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210805/002859-z9obtcsg6y.png"></p><p>任务： <strong>接受一位朋友的礼物</strong></p><p>位置：遇境</p><p>步骤：点开好友星盘，收取好友给自己赠送的心火或者爱心</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210805/002928-mb941csisd.png"></p><p>任务： <strong>收集紫色光芒</strong></p><p>位置：禁阁-地下室</p><p>步骤：进入禁阁往右边走，开启双人门进入地下室，通道出来可以看到紫色光芒，飞起进行收集即可</p><p>难度：⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210805/003009-lthgbp4vzj.png"></p><p>任务： <strong>点燃20根蜡烛</strong></p><p>位置：任意场景</p><p>步骤：点燃20根蜡烛即可完成任务，跑图的时候可以顺便做任务哦。</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210805/003051-mlg3e25uob.png"></p><p>任务： <strong>在禁阁的神坛旁冥想</strong></p><p>位置：禁阁-顶层</p><p>步骤：来到禁阁的顶层，即可找到冥想点</p><p>难度：⚡⚡</p><p> <strong>🌹2021年8月5日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210805/003137-1idespl30f.png"></p><p> <strong>🔥2021年8月5日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210805/003206-6ig8lcrbwd.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210805/003156-zkoma06snj.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210805/003211-lrsg3yk6iq.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210805/003224-j2ipse0675.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210805/003234-m7p1onqtzc.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210805/003247-lki6hcv9mq.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210805/003245-8ps23ljies.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210805/003258-dm3o7r41vl.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210805/003255-n9s7vju6i8.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助理每日攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助理每日攻略</title>
+    <link href="/2021/08/04/2021-08-04%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/08/04/2021-08-04%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助理每日攻略"><a href="#光遇小助理每日攻略" class="headerlink" title="光遇小助理每日攻略"></a>光遇小助理每日攻略</h1><p><strong>👑2021年8月4日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210804/002843-in83etl6wz.png"></p><p>任务： <strong>向一位玩家鞠躬</strong></p><p>位置：任意场景</p><p>步骤：传送到好友的房间，面向好友，点开动作列表后使用【鞠躬】即可</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210804/002943-h12j4c65d7.png"></p><p>任务： <strong>收集蓝色光芒</strong></p><p>位置：霞谷-滑冰场</p><p>步骤：进入霞谷后，往前方滑行，来到滑冰场下方收集蓝色光芒</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210804/003050-yksh9c4tru.png"></p><p>任务： <strong>净化10株黑暗植物</strong></p><p>位置：有黑暗植物的地图，比如雨林、云野、墓土</p><p>步骤：用蜡烛将黑暗植物燃烧掉即可。</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210804/003708-pi14woz65h.png"></p><p>任务：在墓土重温先祖的美好回忆</p><p>位置：墓土二图</p><p>步骤：二图入口即可看到先祖，要注意躲避冥龙哦。</p><p>难度：⚡⚡</p><p> <strong>🌹2021年8月4日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210804/003517-nymp36kr4z.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210804/003511-g54a0dlwtv.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210804/003505-stckr5j7d8.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210804/003504-se34k92wcu.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210804/002649-skyvgw3cid.png"></p><p> <strong>🔥2021年8月4日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210804/002745-n35lyfw7av.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210804/002736-buistschlp.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210804/002732-gpzmbr7snq.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210804/003342-uhygter9cs.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210804/003335-0dn5k7twef.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助理每日攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助理每日攻略</title>
+    <link href="/2021/08/03/2021-08-03%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/08/03/2021-08-03%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助理每日攻略"><a href="#光遇小助理每日攻略" class="headerlink" title="光遇小助理每日攻略"></a>光遇小助理每日攻略</h1><p><strong>👑2021年8月3日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210803/001428-43rs07a51z.png"></p><p>任务： <strong>向其他玩家传递能量</strong></p><p>位置：任意场景</p><p>步骤：在其他玩家损耗了能量的状态下，通过与其牵手传递能量，还可以尝试和好友牵手进图或者返回遇境，更多的完成方式可以在游戏中探索一下哦</p><p>难度：⚡⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210803/001557-9dgl74usfm.png"></p><p>任务： <strong>收集红色光芒</strong></p><p>位置：墓土-遗忘方舟</p><p>步骤：进入墓土一图后往右边走，乘坐小船进入遗忘方舟地图，一直往前即可找到红色光芒！</p><p>难度：⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210803/001653-29stjkqu1a.png"></p><p>任务： <strong>收集30点烛光</strong></p><p>位置：任意场景</p><p>步骤：收集30点烛光即可完成任务，跑图的时候可以顺便做任务哦。</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210803/001757-frwm8jzlq5.png"></p><p>任务： <strong>在滑冰场旁冥想</strong></p><p>位置：霞谷-滑冰场</p><p>步骤：来到霞谷滑冰场，冥想点在高处的山上~</p><p>难度：⚡</p><p> <strong>🌹2021年8月3日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210803/002320-9v8q6uswso.png"></p><p> <strong>🔥2021年8月3日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210803/002820-vi52wpj9sg.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210803/002809-jm8yg1a6eb.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210803/002649-e5921hylca.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210803/002644-ct478q1a6f.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210803/002613-j756zn9saw.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210803/002559-3ly1ztfbj0.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210803/002553-anpm124c5b.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210803/002515-isdakso8l7.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210803/002506-fsg26e51ta.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助理每日攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助理每日攻略</title>
+    <link href="/2021/08/02/2021-08-02%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/08/02/2021-08-02%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助理每日攻略"><a href="#光遇小助理每日攻略" class="headerlink" title="光遇小助理每日攻略"></a>光遇小助理每日攻略</h1><p><strong>👑2021年8月2日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210802/001729-2ky4noabus.png"></p><p>任务： <strong>向一位玩家鞠躬</strong></p><p>位置：任意场景</p><p>步骤：传送到好友的房间，面向好友，点开动作列表后使用【鞠躬】即可</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210802/002045-ps31sekrw5.png"></p><p>任务： <strong>在水母上恢复能量</strong></p><p>位置：有水母的地图，比如雨林、云野</p><p>步骤：消耗能量之后，跳到水母上方恢复能量即可。</p><p>难度：⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210802/001924-2smc0equwa.png"></p><p>任务： <strong>点燃20根蜡烛</strong></p><p>位置：任意场景</p><p>步骤：点燃20根蜡烛即可完成任务，跑图的时候可以顺便做任务哦。</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210802/002206-i1r08zpnjs.png"></p><p>任务： <strong>在雨林的神庙内冥想</strong></p><p>位置：雨林-神庙（终点后面）</p><p>步骤：来到雨林神庙，穿过神庙内的大门，可以找到冥想点~</p><p>难度：⚡⚡</p><p> <strong>🌹2021年8月2日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210802/002315-q4bk1s2tis.png"></p><p> <strong>🔥2021年8月2日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210802/002525-uh6v7e3kp2.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210802/002522-adur82y1vp.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210802/002527-wvcz8s9ia6.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210802/002540-oi0eslw1hn.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210802/002621-pjoiyk6fdl.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210802/002555-crkhd2u9lg.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210802/002549-ih8e9zmwd4.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210802/002602-9q4dycksmu.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210802/002602-nul7btp5y9.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助理每日攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助理每日攻略</title>
+    <link href="/2021/08/01/2021-08-01%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/08/01/2021-08-01%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助理每日攻略"><a href="#光遇小助理每日攻略" class="headerlink" title="光遇小助理每日攻略"></a>光遇小助理每日攻略</h1><p><strong>👑2021年8月1日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210801/013639-fabn1s8i5w.png"></p><p>任务：和朋友击掌</p><p>位置：任意场景</p><p>步骤：点击好友，在好友树使用【击掌】</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210801/013951-7mrg9i23y6.png"></p><p>任务： <strong>收集橙色光芒</strong></p><p>位置：雨林-密林遗迹（水母图）</p><p>步骤：进入雨林四图后往左前方走，在树林里收集橙色光芒，能量充足可以飞起来收集，也可以在下方等光芒经过</p><p>难度：⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210801/014036-qksbhg7fjs.png"></p><p>任务： <strong>点燃20根蜡烛</strong></p><p>位置：任意场景</p><p>步骤：点燃20根蜡烛即可完成任务，跑图的时候可以顺便做任务哦。</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210801/014325-ad5lbh01c8.png"></p><p>任务： <strong>在云野的锦鲤池旁冥想</strong></p><p>位置：云野-神庙入口前的桥下</p><p>步骤：进入云野二图后，启动三座塔之后，随遥鲲飞上神庙，在入口前的桥下找到光圈，完成冥想即可~</p><p>难度：⚡⚡</p><p> <strong>🌹2021年8月1日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210801/013005-z6cmyofi48.png"></p><p> <strong>🔥2021年8月1日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210801/014611-j9sl7vdh0r.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210801/014553-s9zft74u58.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210801/014541-jqwei70tvz.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210801/014528-4253e9hndj.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210801/014514-nhuzwq6c2o.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210801/014448-djs9207iu5.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210801/014441-wolukzhq0n.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210801/014434-9roulycak4.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210801/014426-b850elftnd.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助理每日攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助理每日攻略</title>
+    <link href="/2021/07/31/2021-07-31%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/07/31/2021-07-31%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助理每日攻略"><a href="#光遇小助理每日攻略" class="headerlink" title="光遇小助理每日攻略"></a>光遇小助理每日攻略</h1><p><strong>👑2021年7月31日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210731/010635-3muglve0ic.png"></p><p>任务： <strong>接受一位朋友的礼物</strong></p><p>位置：遇境</p><p>步骤：点开好友星盘，收取好友给自己赠送的心火或者爱心</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210731/010717-i4pbh5m76q.png"></p><p>任务： <strong>收集绿色光芒</strong></p><p>位置：云野-右边隐藏图</p><p>步骤：进入云野一图后往右边走，进入隐藏地图，在左侧的浮空岛等候绿色光芒掉落，需要有一定的耐心噢</p><p>难度：⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210731/010802-s6a37bl891.png"></p><p>任务： <strong>面对冥龙</strong></p><p>位置：墓土二图</p><p>步骤：面对冥龙即可完成，大家要注意躲避哦。</p><p>难度：⚡⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210731/010907-vzw3lmu4tb.png"></p><p>任务： <strong>在禁阁重温先祖的美好回忆</strong>  </p><p>位置：禁阁-二层4人门里面</p><p>步骤：来到禁阁二层，进入4人门后在右侧找到先祖，完成重温任务即可</p><p>难度：⚡⚡</p><p> <strong>🌹2021年7月31日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210731/010155-97s42elovj.png"></p><p> <strong>🔥2021年7月31日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210731/010536-p0j3hcdyir.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210731/010527-4y2biwzask.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210731/010512-9gs4z5w2td.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210731/010431-7dcefkzb3q.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210731/010348-su3bjd2c5l.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助理每日攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助理每日攻略</title>
+    <link href="/2021/07/30/2021-07-30%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/07/30/2021-07-30%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助理每日攻略"><a href="#光遇小助理每日攻略" class="headerlink" title="光遇小助理每日攻略"></a>光遇小助理每日攻略</h1><p><strong>👑2021年7月29日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210730/005713-r25s738l1p.png"></p><p>任务： <strong>2人合力开启一道门</strong></p><p>位置：有双人门的场景，比如云野、霞谷、禁阁</p><p>步骤：点燃双人门一边的机关，有玩家点燃另一边开启门的话，就能完成任务啦</p><p>难度：⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210730/005823-t2w7fhjc5u.png"></p><p>任务： <strong>收集青色光芒</strong></p><p>位置：云野-进门往反方向进入</p><p>步骤：进入云野后不要跳下去，直接向后转进入，在云层里收集青色光芒</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210730/005920-tqg5vd6cf4.png"></p><p>任务： <strong>收集30点烛光</strong></p><p>位置：任意场景</p><p>步骤：收集30点烛光即可完成任务，跑图的时候可以顺便做任务哦。</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210730/005959-73yt4r8bfk.png"></p><p>任务： <strong>在边陲荒漠的神庙里冥想</strong></p><p>位置：墓土-边陲荒漠（一图）</p><p>步骤：进入墓土一图，在倾倒的建筑内找到光圈完成冥想~</p><p>难度：⚡</p><p> <strong>🌹2021年7月29日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210730/010052-m7r20ys68b.png"></p><p> <strong>🔥2021年7月29日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210730/010226-kwsp9usyb2.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210730/010146-4i5vbtqnoj.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210730/010138-r7t0cznkuv.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210730/010112-i82y1ozgfh.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210730/010116-pse8notu46.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助理每日攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇7.29复刻攻略</title>
+    <link href="/2021/07/29/2021-07-29%20%E5%85%89%E9%81%877.29%E5%A4%8D%E5%88%BB%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/07/29/2021-07-29%20%E5%85%89%E9%81%877.29%E5%A4%8D%E5%88%BB%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇7-29复刻攻略"><a href="#光遇7-29复刻攻略" class="headerlink" title="光遇7.29复刻攻略"></a>光遇7.29复刻攻略</h1><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/103146-9ia1kq20f5.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/103157-7ca6vfwmr9.jpeg"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇7.29复刻攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助手每日攻略</title>
+    <link href="/2021/07/29/7%E6%9C%8829%E6%97%A5%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E6%89%8B%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/07/29/7%E6%9C%8829%E6%97%A5%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E6%89%8B%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助手每日攻略"><a href="#光遇小助手每日攻略" class="headerlink" title="光遇小助手每日攻略"></a>光遇小助手每日攻略</h1><p><strong>👑2021年7月29日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/000502-1y50acep4l.png"></p><p>任务： <strong>与4位玩家牵手组队</strong></p><p>位置：任意场景</p><p>步骤：4个玩家牵手即可完成任务啦</p><p>难度：⚡⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/000606-f7lej8cd3i.png"></p><p>任务： <strong>收集紫色色光芒</strong></p><p>位置：禁阁-地下室</p><p>步骤：进入禁阁往右边走，开启双人门进入地下室，通道出来可以看到紫色光芒，飞起进行收集即可</p><p>难度：⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/000906-q5pjvrzna7.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/000919-n2brj6kel7.png"></p><p>任务： <strong>拯救一只被黑暗藤蔓困住的遥鲲</strong></p><p>位置：雨林-密林遗迹（断桥图/水母图）</p><p>步骤：蜡烛烧掉黑暗藤蔓，让遥鲲飞走即可完成任务。</p><p>难度：⚡⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/003144-u57k041fij.png"></p><p>任务： <strong>在霞光城上层冥想</strong></p><p>位置：霞谷-霞光城主城楼中间</p><p>步骤：从霞谷滑冰场进入霞光城（去飞行赛道的方向），围绕着主城往上飞，冥想点在中层的走廊上</p><p>难度：⚡⚡</p><p> <strong>🌹2021年7月29日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/003124-ikegjhrmds.png"></p><p> <strong>🔥2021年7月29日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/003343-n67us32oft.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/003341-szun4a1fst.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/003326-lrg6kde8qf.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/003313-qtpmrzn8ce.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/003304-8k2ryouf0g.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/003258-cs6ljsidyr.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助手每日攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助手每日攻略</title>
+    <link href="/2021/07/29/2021-07-29%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E6%89%8B%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/07/29/2021-07-29%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E6%89%8B%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助手每日攻略"><a href="#光遇小助手每日攻略" class="headerlink" title="光遇小助手每日攻略"></a>光遇小助手每日攻略</h1><p><strong>👑2021年7月29日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/000502-1y50acep4l.png"></p><p>任务： <strong>与4位玩家牵手组队</strong></p><p>位置：任意场景</p><p>步骤：4个玩家牵手即可完成任务啦</p><p>难度：⚡⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/000606-f7lej8cd3i.png"></p><p>任务： <strong>收集紫色色光芒</strong></p><p>位置：禁阁-地下室</p><p>步骤：进入禁阁往右边走，开启双人门进入地下室，通道出来可以看到紫色光芒，飞起进行收集即可</p><p>难度：⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/000906-q5pjvrzna7.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/000919-n2brj6kel7.png"></p><p>任务： <strong>拯救一只被黑暗藤蔓困住的遥鲲</strong></p><p>位置：雨林-密林遗迹（断桥图/水母图）</p><p>步骤：蜡烛烧掉黑暗藤蔓，让遥鲲飞走即可完成任务。</p><p>难度：⚡⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/003144-u57k041fij.png"></p><p>任务： <strong>在霞光城上层冥想</strong></p><p>位置：霞谷-霞光城主城楼中间</p><p>步骤：从霞谷滑冰场进入霞光城（去飞行赛道的方向），围绕着主城往上飞，冥想点在中层的走廊上</p><p>难度：⚡⚡</p><p> <strong>🌹2021年7月29日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/003124-ikegjhrmds.png"></p><p> <strong>🔥2021年7月29日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/003343-n67us32oft.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/003341-szun4a1fst.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/003326-lrg6kde8qf.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/003313-qtpmrzn8ce.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/003304-8k2ryouf0g.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210729/003258-cs6ljsidyr.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助手每日攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助理每日攻略</title>
+    <link href="/2021/07/28/2021-07-28%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/07/28/2021-07-28%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助理每日攻略"><a href="#光遇小助理每日攻略" class="headerlink" title="光遇小助理每日攻略"></a>光遇小助理每日攻略</h1><p><strong>👑2021年7月28日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210728/002815-wqj6seo9nm.png"></p><p>任务： <strong>接受一位朋友的礼物</strong></p><p>位置：遇境</p><p>步骤：点开好友星盘，收取好友给自己赠送的心火或者爱心</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210728/002903-7a1nmrisgz.png"></p><p>任务： <strong>收集红色光芒</strong></p><p>位置：墓土-遗忘方舟</p><p>步骤：进入墓土一图后往右边走，乘坐小船进入遗忘方舟地图，一直往前即可找到红色光芒！</p><p>难度：⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210728/003014-h2tv1incs8.png"></p><p>任务： <strong>面对冥龙</strong></p><p>位置：墓土二图</p><p>步骤：面对冥龙即可完成，大家要注意躲避哦。</p><p>难度：⚡⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210728/003052-1w3eraouhb.png"></p><p>任务： <strong>在静谧庭院外冥想</strong></p><p>位置：雨林-一图</p><p>步骤：进入雨林后往下方飞（不要进入下一张地图），在左边的空地找到光圈完成冥想~</p><p>难度：⚡</p><p> <strong>🌹2021年7月28日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210728/004108-svp32jzdkn.png"></p><p> <strong>🔥2021年7月28日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210728/003755-jiyofwzmev.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210728/003749-qte78nuk56.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210728/003936-5zntyflc0b.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210728/003931-sfda9pgnjr.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210728/003848-l6z71tgivq.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助理每日攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助理每日攻略</title>
+    <link href="/2021/07/27/2021-07-27%20%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/07/27/2021-07-27%20%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助理每日攻略"><a href="#光遇小助理每日攻略" class="headerlink" title="光遇小助理每日攻略"></a>光遇小助理每日攻略</h1><p><strong>👑2021年7月27日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210727/000947-n0ypikw6l3.png"></p><p>任务： <strong>2人合力开启一道门</strong></p><p>位置：有双人门的场景，比如云野、霞谷、禁阁</p><p>步骤：点燃双人门一边的机关，有玩家点燃另一边开启门的话，就能完成任务啦</p><p>难度：⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210727/001115-c97dgu8pfo.png"></p><p>任务： <strong>掀翻5只螃蟹</strong></p><p>位置：有螃蟹的场景，比如墓土、雨林</p><p>步骤：长按自己的角色大叫即可掀翻身边的螃蟹。</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210727/001157-utas49yhom.png"></p><p>任务： <strong>收集紫色色光芒</strong></p><p>位置：禁阁-地下室</p><p>步骤：进入禁阁往右边走，开启双人门进入地下室，通道出来可以看到紫色光芒，飞起进行收集即可</p><p>难度：⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210727/001240-80hje6lrvi.png"></p><p>任务： **在云野重温先祖的美好回忆  **</p><p>位置：云野一图</p><p>步骤：在球形草坪下方重温先祖回忆。</p><p>难度：⚡</p><p> <strong>🌹2021年7月27日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210727/000911-06r7bdugqv.png"></p><p> <strong>🔥2021年7月27日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210727/001416-lss7n8thga.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210727/001457-e3kurgna12.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210727/001515-cn7em2lpwu.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210727/001508-zot9u05hp7.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210727/001527-7whqibra9v.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助理每日攻略</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>光遇小助理每日攻略</title>
+    <link href="/2021/07/26/2021-07-26%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/"/>
+    <url>/2021/07/26/2021-07-26%20%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/</url>
+    
+    <content type="html"><![CDATA[<h1 id="光遇小助理每日攻略"><a href="#光遇小助理每日攻略" class="headerlink" title="光遇小助理每日攻略"></a>光遇小助理每日攻略</h1><p><strong>👑2021年7月26日任务攻略👑</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210726/003016-pln8czv6tm.png"></p><p>任务： <strong>向其他玩家传递能量</strong></p><p>位置：任意场景</p><p>步骤：在其他玩家损耗了能量的状态下，通过与其牵手传递能量，还可以尝试和好友牵手进图或者返回遇境，更多的完成方式可以在游戏中探索一下哦</p><p>难度：⚡⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210726/003127-pyz2gbelw9.png"></p><p>任务： <strong>收集绿色光芒</strong></p><p>位置：云野-右边隐藏图</p><p>步骤：进入云野一图后往右边走，进入隐藏地图，在左侧的浮空岛等候绿色光芒掉落，需要有一定的耐心噢</p><p>难度：⚡⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210726/003221-j4296or0fv.png"></p><p>任务： <strong>收集30点烛光</strong></p><p>位置：任意场景</p><p>步骤：收集30点烛光即可完成任务，跑图的时候可以顺便做任务哦。</p><p>难度：⚡</p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210726/003303-c9ad6usob7.png"></p><p>任务： <strong>在禁阁的神坛旁冥想</strong></p><p>位置：禁阁-顶层</p><p>步骤：来到禁阁的顶层，即可找到冥想点</p><p>难度：⚡⚡</p><p> <strong>🌹2021年7月26日季节烛火攻略🌹</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210726/003440-6yt3neizrs.png"></p><p> <strong>🔥2021年7月26日大蜡烛攻略🔥</strong></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210726/003525-zwspivcnsq.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210726/003538-hlpqs01wji.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210726/003547-7dont4p5lr.png"></p><p><img src="https://ok.166.net/reunionpub/ds/kol/20210726/003545-i4sm5rw819.png"></p>]]></content>
+    
+    
+    <categories>
+      
+      <category>Sky光•遇</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>Sky光•遇</tag>
+      
+      <tag>光遇小助理每日攻略</tag>
+      
+    </tags>
     
   </entry>
   

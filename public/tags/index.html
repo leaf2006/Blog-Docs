@@ -18,6 +18,11 @@
   <meta name="author" content="落落">
   <meta name="keywords" content="技术,文案,海">
   
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aplayer/dist/APlayer.min.css">
+<script src="http://cdn.jsdelivr.net/npm/aplayer@1.10.1/dist/APlayer.min.js"></script>
+<script src="http://cdn.jsdelivr.net/npm/meting@1.2.0/dist/Meting.min.js"></script>
+
+  
   <title>标签 - 落落のBlog</title>
 
   <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" />
@@ -40,7 +45,7 @@
 
   <script id="fluid-configs">
     var Fluid = window.Fluid || {};
-    var CONFIG = {"hostname":"skyxinye.xyz","root":"/","version":"1.8.11","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"right","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"copy_btn":true,"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null}},"search_path":"/local-search.xml"};
+    var CONFIG = {"hostname":"skyxinye.xyz","root":"/","version":"1.8.11","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"right","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"copy_btn":true,"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null}},"search_path":"/local-search.xml"};
   </script>
   <script  src="/js/utils.js" ></script>
   <script  src="/js/color-schema.js" ></script>
@@ -200,7 +205,7 @@
                 
 
 <div class="text-center tagcloud">
-  <a href="/tags/Hexo%E5%8D%9A%E5%AE%A2/" style="font-size: 15px; color: #bbe">Hexo博客</a> <a href="/tags/Linux%E7%B3%BB%E7%BB%9F/" style="font-size: 24px; color: #6994cd">Linux系统</a> <a href="/tags/Python/" style="font-size: 15px; color: #bbe">Python</a> <a href="/tags/Sky%E5%85%89%E2%80%A2%E9%81%87/" style="font-size: 30px; color: #337ab7">Sky光•遇</a> <a href="/tags/%E5%85%89%E9%81%877-15%E5%A4%8D%E5%88%BB%E6%94%BB%E7%95%A5/" style="font-size: 15px; color: #bbe">光遇7.15复刻攻略</a> <a href="/tags/%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E6%89%8B%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/" style="font-size: 18px; color: #a0aee3">光遇小助手每日攻略</a> <a href="/tags/%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/" style="font-size: 27px; color: #4e87c2">光遇小助理每日攻略</a> <a href="/tags/%E5%85%89%E9%81%87%E5%B0%8F%E7%8E%8B%E5%AD%90%E5%AD%A3%E6%94%BB%E7%95%A5/" style="font-size: 15px; color: #bbe">光遇小王子季攻略</a> <a href="/tags/%E5%96%9C%E6%AC%A2%E7%9A%84%E4%BA%BA/" style="font-size: 15px; color: #bbe">喜欢的人</a> <a href="/tags/%E6%8A%80%E6%9C%AF/" style="font-size: 15px; color: #bbe">技术</a> <a href="/tags/%E6%8A%91%E9%83%81%E7%97%87/" style="font-size: 18px; color: #a0aee3">抑郁症</a> <a href="/tags/%E6%95%B0%E5%AD%A6/" style="font-size: 15px; color: #bbe">数学</a> <a href="/tags/%E6%A0%91%E8%8E%93%E6%B4%BE/" style="font-size: 21px; color: #85a1d8">树莓派</a> <a href="/tags/%E6%B8%97%E9%80%8F/" style="font-size: 15px; color: #bbe">渗透</a> <a href="/tags/%E7%A8%8B%E5%BA%8F/" style="font-size: 15px; color: #bbe">程序</a> <a href="/tags/%E8%80%83%E8%AF%95/" style="font-size: 15px; color: #bbe">考试</a>
+  <a href="/tags/Hexo%E5%8D%9A%E5%AE%A2/" style="font-size: 15px; color: #bbe">Hexo博客</a> <a href="/tags/Linux%E7%B3%BB%E7%BB%9F/" style="font-size: 24px; color: #6994cd">Linux系统</a> <a href="/tags/Python/" style="font-size: 24px; color: #6994cd">Python</a> <a href="/tags/Sky%E5%85%89%E2%80%A2%E9%81%87/" style="font-size: 30px; color: #337ab7">Sky光•遇</a> <a href="/tags/%E5%85%89%E9%81%8708-12%E5%A4%8D%E5%88%BB%E6%94%BB%E7%95%A5/" style="font-size: 15px; color: #bbe">光遇08.12复刻攻略</a> <a href="/tags/%E5%85%89%E9%81%877-15%E5%A4%8D%E5%88%BB%E6%94%BB%E7%95%A5/" style="font-size: 15px; color: #bbe">光遇7.15复刻攻略</a> <a href="/tags/%E5%85%89%E9%81%877-29%E5%A4%8D%E5%88%BB%E6%94%BB%E7%95%A5/" style="font-size: 15px; color: #bbe">光遇7.29复刻攻略</a> <a href="/tags/%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E6%89%8B%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/" style="font-size: 24px; color: #6994cd">光遇小助手每日攻略</a> <a href="/tags/%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86/" style="font-size: 15px; color: #bbe">光遇小助理</a> <a href="/tags/%E5%85%89%E9%81%87%E5%B0%8F%E5%8A%A9%E7%90%86%E6%AF%8F%E6%97%A5%E6%94%BB%E7%95%A5/" style="font-size: 27px; color: #4e87c2">光遇小助理每日攻略</a> <a href="/tags/%E5%85%89%E9%81%87%E5%B0%8F%E7%8E%8B%E5%AD%90%E5%AD%A3%E6%94%BB%E7%95%A5/" style="font-size: 15px; color: #bbe">光遇小王子季攻略</a> <a href="/tags/%E5%96%9C%E6%AC%A2%E7%9A%84%E4%BA%BA/" style="font-size: 15px; color: #bbe">喜欢的人</a> <a href="/tags/%E6%8A%80%E6%9C%AF/" style="font-size: 15px; color: #bbe">技术</a> <a href="/tags/%E6%8A%91%E9%83%81%E7%97%87/" style="font-size: 18px; color: #a0aee3">抑郁症</a> <a href="/tags/%E6%95%B0%E5%AD%A6/" style="font-size: 15px; color: #bbe">数学</a> <a href="/tags/%E6%A0%91%E8%8E%93%E6%B4%BE/" style="font-size: 21px; color: #85a1d8">树莓派</a> <a href="/tags/%E6%B8%97%E9%80%8F/" style="font-size: 15px; color: #bbe">渗透</a> <a href="/tags/%E7%A8%8B%E5%BA%8F/" style="font-size: 24px; color: #6994cd">程序</a> <a href="/tags/%E8%80%83%E8%AF%95/" style="font-size: 15px; color: #bbe">考试</a>
 </div>
 
               </div>
@@ -241,6 +246,14 @@
     
 
     
+      <div class="col-lg-7 mx-auto nopadding-x-md">
+        <div class="container custom mx-auto">
+          <div class="aplayer" data-id="5019443126" data-server="netease" data-type="playlist" data-fixed="true" data-order="random" data-autoplay="true" data-listfolded="true">
+</div>
+
+        </div>
+      </div>
+    
   </main>
 
   <footer class="text-center mt-5 py-3">
@@ -248,13 +261,37 @@
      <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
   </div>
   
+  <div class="statistics">
+    
+    
+
+    
+      
+        <!-- 不蒜子统计PV -->
+        <span id="busuanzi_container_site_pv" style="display: none">
+            总访问量 
+            <span id="busuanzi_value_site_pv"></span>
+             次
+          </span>
+      
+      
+        <!-- 不蒜子统计UV -->
+        <span id="busuanzi_container_site_uv" style="display: none">
+            总访客数 
+            <span id="busuanzi_value_site_uv"></span>
+             人
+          </span>
+      
+    
+  </div>
+
 
   
   <!-- 备案信息 -->
   <div class="beian">
     <span>
       <a href="http://beian.miit.gov.cn/" target="_blank" rel="nofollow noopener">
-        粤ICP证2734189420号
+        粤ICP证734189420号
       </a>
     </span>
     
@@ -270,7 +307,7 @@
               <span style="visibility: hidden; width: 0">|</span>
               <img src="/img/police_beian.png" srcset="/img/loading.gif" lazyload alt="police-icon"/>
             
-            <span>粤ICP证2734189420号</span>
+            <span>粤ICP证734189420号</span>
           </a>
         </span>
       
@@ -353,6 +390,19 @@
 
 
 
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
 
 
 
