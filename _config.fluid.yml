@@ -209,7 +209,8 @@ custom_head: |
 # 自定义底部 HTML 内容（位于 footer 上方），注意不要和 `post: custom` 配置冲突
 # Customize the HTML content at the bottom (located above the footer), be careful not to conflict with `post: custom`
 custom_html: |
-    <div class="aplayer" data-id="2099017769" data-server="netease" data-type="playlist" data-fixed="true" data-order="random" data-autoplay="false" data-listfolded="true"></div>
+    <div class="aplayer" data-id="2099017769" data-server="netease" data-type="playlist" data-fixed="true" data-order="random" data-autoplay="false" data-listfolded="true">
+    </div>
 
 # 网页访问统计
 # Analysis of website visitors
