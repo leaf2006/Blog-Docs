@@ -13,12 +13,12 @@
 		<script src="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
 
 		<!-- 引入 layui.css -->
-		<link rel="stylesheet" href="//unpkg.com/layui@2.6.8/dist/css/layui.css">
+		<link rel="stylesheet" href="https://unpkg.com/layui@2.6.8/dist/css/layui.css">
 
 		<!-- 引入 layui.js -->
-		<script src="//unpkg.com/layui@2.6.8/dist/layui.js"></script>
+		<script src="https://unpkg.com/layui@2.6.8/dist/layui.js"></script>
 
-		<meta name="referrer" content="never">
+		<!-- <meta name="referrer" content="never"> -->
 
 
 	</head>
@@ -94,27 +94,37 @@
 
 	</body>
 	<script type="text/javascript">
+		// jQuery.support.cors = true;
+
 		function check(ty) {
 
 			switch (ty) {
 				case 'frps':
 					console.log("frps")
+					jQuery.support.cors = true;
 					$.ajax({
 						url: "http://ts.qiny.top:7500/",
 						type: "get",
 						username: "admin",
 						password: "admin",
 						timeout: 4000,
-						success: function(result, status, xhr) {
-							$("#frps").attr("class", "label label-success").text("可用" + " " + status);
-							$("#frps-loading").attr("class", "layui-icon layui-icon-ok");
+						headers: {
+							// "Access-Control-Allow-Origin":"*" ,
+							"content-type": "text/html; charset=utf-8"
 						},
-						error: function(result, status, xhr) {
-							$("#frps").text("不可用" + " " + status);
-							$("#frps-loading").attr("class", "layui-icon layui-icon-close");
-							// $("#frps_die").attr("style","display: inline;")
-							$("#frps_die").show(1000)
-						},
+						dataType: 'jsonp',
+						complete: function(response) {
+							if (response.status == 0 || response.status == 503) {
+								$("#frps").text("不可用" + " " + response.status);
+								$("#frps-loading").attr("class", "layui-icon layui-icon-close");
+								$("#frps_die").show(500);
+						
+							} else {
+								$("#frps").attr("class", "label label-success").text("可用" + " " + response
+								.status);
+								$("#frps-loading").attr("class", "layui-icon layui-icon-ok");
+							};
+						}
 					})
 					break;
 
@@ -124,16 +134,22 @@
 						url: "http://ts.qiny.top:48080/",
 						type: "get",
 						timeout: 4000,
-						success: function(result, status, xhr) {
-							$("#frpc").attr("class", "label label-success").text("可用" + " " + status);
-							$("#frpc-loading").attr("class", "layui-icon layui-icon-ok");
+						headers: {
+							"content-type": "text/html; charset=utf-8",
 						},
-						error: function(result, status, xhr) {
-							$("#frpc").text("不可用" + " " + status);
-							$("#frpc-loading").attr("class", "layui-icon layui-icon-close");
-							// $("#frpc_die").attr("style","")
-							$("#frpc_die").show(500)
-						},
+						// dataType: 'jsonp',
+						complete: function(response) {
+							if (response.status == 0 || response.status == 503) {
+								$("#frpc").text("不可用" + " " + response.status);
+								$("#frpc-loading").attr("class", "layui-icon layui-icon-close");
+								$("#frpc_die").show(500);
+
+							} else {
+								$("#frpc").attr("class", "label label-success").text("可用" + " " + response
+								.status);
+								$("#frpc-loading").attr("class", "layui-icon layui-icon-ok");
+							};
+						}
 					})
 					break;
 
@@ -142,16 +158,23 @@
 					$.ajax({
 						url: "https://github.com/",
 						type: "get",
-						// timeout: 7000,
-						success: function(result, status, xhr) {
-							$("#github").attr("class", "label label-success").text("可用" + " " + status);
-							$("#github-loading").attr("class", "layui-icon layui-icon-ok");
+						timeout: 6000,
+						headers: {
+							"content-type": "text/html; charset=utf-8",
+							"Access-Control-Allow-Origin": "*",
 						},
-						error: function(result, status, xhr) {
-							$("#github").text("不可用" + " " + status);
-							$("#github-loading").attr("class", "layui-icon layui-icon-close");
-							$("#github_die").show(500)
-						},
+						dataType: 'jsonp',
+						complete: function(response) {
+							if (response.status == 0) {
+								$("#github").text("不可用" + " " + response.status);
+								$("#github-loading").attr("class", "layui-icon layui-icon-close");
+								$("#github_die").show(500);
+							} else {
+								$("#github").attr("class", "label label-success").text("可用" + " " + response
+									.status);
+								$("#github-loading").attr("class", "layui-icon layui-icon-ok");
+							};
+						}
 					})
 					break;
 
@@ -161,14 +184,17 @@
 						url: "https://skyxinye.xyz/",
 						type: "get",
 						timeout: 7000,
-						success: function(result, status, xhr) {
-							$("#blog").attr("class", "label label-success").text("可用" + " " + status);
-							$("#blog-loading").attr("class", "layui-icon layui-icon-ok");
-						},
-						error: function(result, status, xhr) {
-							$("#blog").text("不可用" + " " + status);
-							$("#blog-loading").attr("class", "layui-icon layui-icon-close");
-						},
+						complete: function(response) {
+							if (response.status == 0) {
+								$("#blog").text("不可用" + " " + response.status);
+								$("#blog-loading").attr("class", "layui-icon layui-icon-close");
+
+							} else {
+								$("#blog").attr("class", "label label-success").text("可用" + " " + response
+								.status);
+								$("#blog-loading").attr("class", "layui-icon layui-icon-ok");
+							};
+						}
 					})
 					break;
 
@@ -193,10 +219,9 @@
 		function IPCallBack(result) {
 			console.log(result);
 			layer.msg(result.ip + result.addr);
-			$("#ip").text(result.ip)
-			$("#addr").text(result.addr)
+			$("#ip").text(result.ip);
+			$("#addr").text(result.addr);
 		};
-		
 	</script>
 	<script src="http://whois.pconline.com.cn/ipJson.jsp"></script>
 
