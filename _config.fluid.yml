@@ -418,7 +418,7 @@ index:
   # 头图高度，屏幕百分比
   # Height ratio of banner image
   # Available: 0 - 100
-  banner_img_height: 100
+  banner_img_height: 50
 
   # 头图黑色蒙版的不透明度，available: 0 - 1.0， 1 是完全不透明
   # Opacity of the banner mask, 1.0 is completely opaque
@@ -807,7 +807,7 @@ links:
   # Custom content at the bottom of the links
   custom:
     enable: true
-    content: '<hr><p>在下方留言申请加入我的友链，按如下格式提供信息：</p><ul><li>博客名：落落のBlog</li><li>简介：海的那边还是海吗?</li><li>链接：https://skyxinye.xyz/</li><li>图片：http://q.qlogo.cn/headimg_dl?dst_uin=2734184475&spec=640&img_type=jpg/li></ul>'
+    content: '<hr><p>在下方留言申请加入我的友链，按如下格式提供信息：</p><ul><li>博客名：落落のBlog</li><li>简介：海的那边还是海吗?</li><li>链接：https://skyxinye.xyz/</li><li>图片：http://q.qlogo.cn/headimg_dl?dst_uin=2734184475&spec=640&img_type=jpg</ul>'
 
   # 评论插件
   # Comment plugin
