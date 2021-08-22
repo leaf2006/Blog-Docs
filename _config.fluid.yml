@@ -892,3 +892,4 @@ static_prefix:
 # 跳过文件夹下所有文件
 skip_render: 
   - "test/index.html"
+  - "test/tools.html"
