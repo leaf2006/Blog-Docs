@@ -815,6 +815,14 @@ links:
       link: https://www.qiumu.club/,
       avatar: https://qiumuu.gitee.io/mdchat/ico/3.jpg
     }
+    - {
+      title: 云梦 ╮不浅,
+      intro: 梦，开始的地方,
+      link: https://blog.adworld.top/,
+      avatar: https://blog.adworld.top/photo/zhade2.jpg
+    }
+
+
 
   # 当成员头像加载失败时，替换为指定图片
   # When the member avatar fails to load, replace the specified image
